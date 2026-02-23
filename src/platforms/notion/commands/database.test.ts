@@ -4086,3 +4086,657 @@ describe('database view-update', () => {
     expect(output.length).toBeGreaterThan(0)
   })
 })
+
+describe('database view-list', () => {
+  test('lists all views for a database', async () => {
+    mock.restore()
+    // Given
+    const mockCollectionResponse = {
+      recordMap: {
+        collection: {
+          'coll-1': {
+            value: {
+              id: 'coll-1',
+              parent_id: 'block-1',
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              view_ids: ['view-1', 'view-2'],
+            },
+          },
+        },
+      },
+    }
+    const mockViewResponse = {
+      recordMap: {
+        collection_view: {
+          'view-1': {
+            value: {
+              id: 'view-1',
+              type: 'table',
+              name: 'Table View',
+              alive: true,
+            },
+          },
+          'view-2': {
+            value: {
+              id: 'view-2',
+              type: 'board',
+              name: 'Board View',
+              alive: true,
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockCollectionResponse)
+        } else if (syncCallCount === 2) {
+          return Promise.resolve(mockBlockResponse)
+        } else {
+          return Promise.resolve(mockViewResponse)
+        }
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const { databaseCommand } = await import('./database')
+
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-list', 'coll-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } finally {
+      console.log = originalLog
+    }
+
+    // Then
+    expect(output.length).toBeGreaterThan(0)
+    const parsed = JSON.parse(output[0])
+    expect(Array.isArray(parsed)).toBe(true)
+    expect(parsed.length).toBe(2)
+    expect(parsed[0]).toEqual({
+      id: 'view-1',
+      type: 'table',
+      name: 'Table View',
+    })
+    expect(parsed[1]).toEqual({
+      id: 'view-2',
+      type: 'board',
+      name: 'Board View',
+    })
+  })
+
+  test('outputs empty array when no views exist', async () => {
+    mock.restore()
+    // Given
+    const mockCollectionResponse = {
+      recordMap: {
+        collection: {
+          'coll-1': {
+            value: {
+              id: 'coll-1',
+              parent_id: 'block-1',
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              view_ids: [],
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockCollectionResponse)
+        } else {
+          return Promise.resolve(mockBlockResponse)
+        }
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const { databaseCommand } = await import('./database')
+
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-list', 'coll-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } finally {
+      console.log = originalLog
+    }
+
+    // Then
+    expect(output.length).toBeGreaterThan(0)
+    const parsed = JSON.parse(output[0])
+    expect(Array.isArray(parsed)).toBe(true)
+    expect(parsed.length).toBe(0)
+  })
+})
+
+describe('database view-add', () => {
+  test('creates a new view with default type (table)', async () => {
+    mock.restore()
+    // Given
+    const mockCollectionResponse = {
+      recordMap: {
+        collection: {
+          'coll-1': {
+            value: {
+              id: 'coll-1',
+              parent_id: 'block-1',
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              space_id: 'space-123',
+              view_ids: ['view-1'],
+            },
+          },
+        },
+      },
+    }
+    const mockNewViewResponse = {
+      recordMap: {
+        collection_view: {
+          'mock-uuid': {
+            value: {
+              id: 'mock-uuid',
+              type: 'table',
+              name: 'Table view',
+              alive: true,
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockCollectionResponse)
+        } else if (syncCallCount === 2) {
+          return Promise.resolve(mockBlockResponse)
+        } else {
+          return Promise.resolve(mockNewViewResponse)
+        }
+      }
+      if (endpoint === 'saveTransactions') {
+        return Promise.resolve({})
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const { databaseCommand } = await import('./database')
+
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-add', 'coll-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } finally {
+      console.log = originalLog
+    }
+
+    // Then
+    const saveCall = mockInternalRequest.mock.calls.find((call) => (call as unknown[])[1] === 'saveTransactions') as
+      | [string, string, { transactions: Array<{ operations: Array<Record<string, unknown>> }> }]
+      | undefined
+    expect(saveCall).toBeDefined()
+    if (saveCall) {
+      const operations = saveCall[2].transactions[0].operations
+      const collectionViewOp = operations.find((op) => (op.pointer as any)?.table === 'collection_view')
+      const blockOp = operations.find((op) => (op.pointer as any)?.table === 'block')
+      expect(collectionViewOp).toBeDefined()
+      expect(blockOp?.command).toBe('listAfter')
+    }
+    expect(output.length).toBeGreaterThan(0)
+    const parsed = JSON.parse(output[0])
+    expect(parsed).toEqual({
+      id: 'mock-uuid',
+      type: 'table',
+      name: 'Table view',
+    })
+  })
+
+  test('creates a view with specified type (board)', async () => {
+    mock.restore()
+    // Given
+    const mockCollectionResponse = {
+      recordMap: {
+        collection: {
+          'coll-1': {
+            value: {
+              id: 'coll-1',
+              parent_id: 'block-1',
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              space_id: 'space-123',
+              view_ids: ['view-1'],
+            },
+          },
+        },
+      },
+    }
+    const mockNewViewResponse = {
+      recordMap: {
+        collection_view: {
+          'mock-uuid': {
+            value: {
+              id: 'mock-uuid',
+              type: 'board',
+              name: 'Board view',
+              alive: true,
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string, body: Record<string, unknown>) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockCollectionResponse)
+        } else if (syncCallCount === 2) {
+          return Promise.resolve(mockBlockResponse)
+        } else {
+          return Promise.resolve(mockNewViewResponse)
+        }
+      }
+      if (endpoint === 'saveTransactions') {
+        const transactions = (body.transactions as Array<{ operations: Array<Record<string, unknown>> }>)[0]
+        const viewOp = transactions.operations.find((op) => (op.pointer as any)?.table === 'collection_view')
+        expect((viewOp?.args as any)?.type).toBe('board')
+        return Promise.resolve({})
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const { databaseCommand } = await import('./database')
+
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-add', 'coll-1', '--workspace-id', 'space-123', '--type', 'board'], {
+        from: 'user',
+      })
+    } finally {
+      console.log = originalLog
+    }
+
+    // Then
+    expect(output.length).toBeGreaterThan(0)
+    const parsed = JSON.parse(output[0])
+    expect(parsed.type).toBe('board')
+  })
+
+  test('rejects invalid view type', async () => {
+    mock.restore()
+    // Given
+    const mockCollectionResponse = {
+      recordMap: {
+        collection: {
+          'coll-1': {
+            value: {
+              id: 'coll-1',
+              parent_id: 'block-1',
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              space_id: 'space-123',
+              view_ids: ['view-1'],
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockCollectionResponse)
+        } else {
+          return Promise.resolve(mockBlockResponse)
+        }
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const mockExit = mock(() => {
+      throw new Error('process.exit called')
+    })
+    const originalExit = process.exit
+    process.exit = mockExit as any
+
+    const { databaseCommand } = await import('./database')
+
+    const errors: string[] = []
+    const originalError = console.error
+    console.error = (msg: string) => errors.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-add', 'coll-1', '--workspace-id', 'space-123', '--type', 'invalid'], {
+        from: 'user',
+      })
+    } catch {
+      // Expected to throw
+    } finally {
+      console.error = originalError
+      process.exit = originalExit
+    }
+
+    // Then
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors[0]).toContain('Invalid view type')
+  })
+})
+
+describe('database view-delete', () => {
+  test('deletes a view', async () => {
+    mock.restore()
+    // Given
+    const mockViewResponse = {
+      recordMap: {
+        collection_view: {
+          'view-1': {
+            value: {
+              id: 'view-1',
+              parent_id: 'block-1',
+              alive: true,
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              space_id: 'space-123',
+              view_ids: ['view-1', 'view-2'],
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockViewResponse)
+        } else {
+          return Promise.resolve(mockBlockResponse)
+        }
+      }
+      if (endpoint === 'saveTransactions') {
+        return Promise.resolve({})
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const { databaseCommand } = await import('./database')
+
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-delete', 'view-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } finally {
+      console.log = originalLog
+    }
+
+    // Then
+    const saveCall = mockInternalRequest.mock.calls.find((call) => (call as unknown[])[1] === 'saveTransactions') as
+      | [string, string, { transactions: Array<{ operations: Array<Record<string, unknown>> }> }]
+      | undefined
+    expect(saveCall).toBeDefined()
+    if (saveCall) {
+      const operations = saveCall[2].transactions[0].operations
+      const updateOp = operations.find((op) => (op.pointer as any)?.table === 'collection_view')
+      const removeOp = operations.find((op) => (op.pointer as any)?.table === 'block')
+      expect(updateOp?.command).toBe('update')
+      expect((updateOp?.args as any)?.alive).toBe(false)
+      expect(removeOp?.command).toBe('listRemove')
+    }
+    expect(output.length).toBeGreaterThan(0)
+    const parsed = JSON.parse(output[0])
+    expect(parsed).toEqual({
+      id: 'view-1',
+      deleted: true,
+    })
+  })
+
+  test('refuses to delete the last view', async () => {
+    mock.restore()
+    // Given
+    const mockViewResponse = {
+      recordMap: {
+        collection_view: {
+          'view-1': {
+            value: {
+              id: 'view-1',
+              parent_id: 'block-1',
+              alive: true,
+            },
+          },
+        },
+      },
+    }
+    const mockBlockResponse = {
+      recordMap: {
+        block: {
+          'block-1': {
+            value: {
+              id: 'block-1',
+              space_id: 'space-123',
+              view_ids: ['view-1'],
+            },
+          },
+        },
+      },
+    }
+    let syncCallCount = 0
+    const mockInternalRequest = mock((_token: string, endpoint: string) => {
+      if (endpoint === 'syncRecordValues') {
+        syncCallCount++
+        if (syncCallCount === 1) {
+          return Promise.resolve(mockViewResponse)
+        } else {
+          return Promise.resolve(mockBlockResponse)
+        }
+      }
+      return Promise.resolve({})
+    })
+    const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token' }))
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mockGetCredentials,
+      generateId: mock(() => 'mock-uuid'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-123'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+    }))
+
+    const mockExit = mock(() => {
+      throw new Error('process.exit called')
+    })
+    const originalExit = process.exit
+    process.exit = mockExit as any
+
+    const { databaseCommand } = await import('./database')
+
+    const errors: string[] = []
+    const originalError = console.error
+    console.error = (msg: string) => errors.push(msg)
+
+    try {
+      // When
+      await databaseCommand.parseAsync(['view-delete', 'view-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } catch {
+      // Expected to throw
+    } finally {
+      console.error = originalError
+      process.exit = originalExit
+    }
+
+    // Then
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors[0]).toContain('Cannot delete the last view')
+  })
+})

@@ -223,6 +223,7 @@ describe('Notion E2E Tests', () => {
 
   describe('database', () => {
     let createdDbId = ''
+    let addedViewId = ''
 
     beforeAll(async () => {
       await waitForRateLimit(2000)
@@ -1053,6 +1054,98 @@ describe('Notion E2E Tests', () => {
       expect(propNames[1]).toBe('Status')
       expect(propNames[2]).toBe('Name')
 
+      await waitForRateLimit()
+    }, 60000)
+
+    test('database view-list lists views for a database', async () => {
+      // Track the database used in tests
+      testDatabaseIds.push(createdDbId)
+      const result = await runNotionCLI([
+        'database',
+        'view-list',
+        '--workspace-id',
+        workspaceId,
+        createdDbId,
+      ])
+      expect(result.exitCode).toBe(0)
+      const views = (parseJSON<Array<{ id: string; type: string; name: string }>>(result.stdout) ?? [])
+      expect(Array.isArray(views)).toBe(true)
+      expect(views.length).toBeGreaterThanOrEqual(1)
+      expect(views.some((v) => v.type === 'table')).toBe(true)
+      await waitForRateLimit()
+    }, 60000)
+  test('database view-add adds a new board view', async () => {
+      const result = await runNotionCLI([
+        'database',
+        'view-add',
+        '--workspace-id',
+        workspaceId,
+        createdDbId,
+        '--type',
+        'board',
+        '--name',
+        'Board View',
+      ])
+      expect(result.exitCode).toBe(0)
+      const data = parseJSON<{ id: string; type: string; name: string }>(result.stdout)
+      expect(data?.type).toBe('board')
+      expect(data?.name).toBe('Board View')
+      addedViewId = data!.id
+      await waitForRateLimit()
+    }, 60000)
+  test('database view-list shows newly added view', async () => {
+      const result = await runNotionCLI([
+        'database',
+        'view-list',
+        '--workspace-id',
+        workspaceId,
+        createdDbId,
+      ])
+      expect(result.exitCode).toBe(0)
+      const views = (parseJSON<Array<{ id: string; type: string; name: string }>>(result.stdout) ?? [])
+      expect(Array.isArray(views)).toBe(true)
+      expect(views.length).toBeGreaterThanOrEqual(2)
+      const hasBoard = views.some((v) => v.type === 'board')
+      expect(hasBoard).toBe(true)
+      await waitForRateLimit()
+    }, 60000)
+  test('database view-delete removes a view', async () => {
+      const result = await runNotionCLI([
+        'database',
+        'view-delete',
+        '--workspace-id',
+        workspaceId,
+        addedViewId,
+      ])
+      expect(result.exitCode).toBe(0)
+      const data = parseJSON<{ id: string; deleted: boolean }>(result.stdout)
+      expect(data?.deleted).toBe(true)
+      expect(data?.id).toBe(addedViewId)
+      await waitForRateLimit()
+    }, 60000)
+  test('database view-delete refuses to delete last view', async () => {
+      // List to determine last remaining view
+      const listResult = await runNotionCLI([
+        'database',
+        'view-list',
+        '--workspace-id',
+        workspaceId,
+        createdDbId,
+      ])
+      expect(listResult.exitCode).toBe(0)
+      const views = (parseJSON<Array<{ id: string; type: string; name: string }>>(listResult.stdout) ?? [])
+      expect(views.length).toBe(1)
+      const lastViewId = views[0].id
+      const delResult = await runNotionCLI([
+        'database',
+        'view-delete',
+        '--workspace-id',
+        workspaceId,
+        lastViewId,
+      ])
+      expect(delResult.exitCode).toBe(1)
+      const err = parseJSON<{ error: string }>(delResult.stderr)
+      expect(err?.error).toContain('Cannot delete the last view')
       await waitForRateLimit()
     }, 60000)
   })
