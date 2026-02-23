@@ -4,6 +4,18 @@
 
 A full-coverage, agent-friendly CLI for the Notion API. Ships two CLIs — `vibe-notion` for the unofficial private API (act as yourself) and `vibe-notionbot` for the official Integration API (act as a bot).
 
+## Table of Contents
+
+- [Why Vibe Notion?](#-why-vibe-notion)
+- [Installation](#-installation)
+- [Agent Skills](#-agent-skills)
+- [Quick Start](#-quick-start)
+- [Command Overview](#-command-overview)
+- [Use Cases](#-use-cases)
+- [Philosophy](#-philosophy)
+- [Contributing](#-contributing)
+- [License](#-license)
+
 ## ✨ Why Vibe Notion?
 
 Notion's official API only supports Integration (bot) tokens — your agent can't do things **on behalf of you**. Vibe Notion solves this by extracting your `token_v2` from the Notion desktop app, so your agent operates as you, with your full permissions.
@@ -174,4 +186,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 ## 📄 License
 
 MIT
-
