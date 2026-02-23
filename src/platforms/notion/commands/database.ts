@@ -156,6 +156,15 @@ type ViewUpdateOptions = WorkspaceOptions & {
   resize?: string
 }
 
+type ViewListOptions = WorkspaceOptions
+
+type ViewAddOptions = WorkspaceOptions & {
+  type?: string
+  name?: string
+}
+
+type ViewDeleteOptions = WorkspaceOptions
+
 function parseSchemaProperties(raw?: string): CollectionSchema {
   if (!raw) {
     return {}
@@ -941,6 +950,209 @@ async function viewUpdateAction(rawViewId: string, options: ViewUpdateOptions): 
   }
 }
 
+const VIEW_TYPES = ['table', 'board', 'calendar', 'list', 'gallery', 'timeline'] as const
+
+type CollectionBlockRecord = {
+  value: {
+    id: string
+    collection_id?: string
+    view_ids?: string[]
+    space_id?: string
+    [key: string]: unknown
+  }
+}
+
+type SyncBlockResponse = {
+  recordMap: {
+    block: Record<string, CollectionBlockRecord>
+  }
+}
+
+async function resolveCollectionBlock(tokenV2: string, collectionId: string): Promise<CollectionBlockRecord['value']> {
+  const collection = await fetchCollection(tokenV2, collectionId)
+  const parentId = collection.parent_id
+  if (!parentId) {
+    throw new Error(`Could not resolve parent block for collection: ${collectionId}`)
+  }
+
+  const blockResp = (await internalRequest(tokenV2, 'syncRecordValues', {
+    requests: [{ pointer: { table: 'block', id: parentId }, version: -1 }],
+  })) as SyncBlockResponse
+
+  const block = Object.values(blockResp.recordMap.block)[0]?.value
+  if (!block) {
+    throw new Error(`Parent block not found for collection: ${collectionId}`)
+  }
+
+  return block
+}
+
+async function viewListAction(rawCollectionId: string, options: ViewListOptions): Promise<void> {
+  const collectionId = formatNotionId(rawCollectionId)
+  try {
+    const creds = await getCredentialsOrExit()
+    await resolveAndSetActiveUserId(creds.token_v2, options.workspaceId)
+
+    const block = await resolveCollectionBlock(creds.token_v2, collectionId)
+    const viewIds = block.view_ids ?? []
+
+    if (viewIds.length === 0) {
+      console.log(formatOutput([], options.pretty))
+      return
+    }
+
+    const response = (await internalRequest(creds.token_v2, 'syncRecordValues', {
+      requests: viewIds.map((id) => ({ pointer: { table: 'collection_view', id }, version: -1 })),
+    })) as SyncViewResponse
+
+    const views = Object.values(response.recordMap.collection_view)
+      .map((record) => record.value)
+      .filter((v) => v.alive !== false)
+      .map((v) => ({
+        id: v.id,
+        type: v.type,
+        name: (v.name as string) || '',
+      }))
+
+    console.log(formatOutput(views, options.pretty))
+  } catch (error) {
+    console.error(JSON.stringify({ error: (error as Error).message }))
+    process.exit(1)
+  }
+}
+
+async function viewAddAction(rawCollectionId: string, options: ViewAddOptions): Promise<void> {
+  const collectionId = formatNotionId(rawCollectionId)
+  try {
+    const creds = await getCredentialsOrExit()
+    await resolveAndSetActiveUserId(creds.token_v2, options.workspaceId)
+
+    const viewType = options.type ?? 'table'
+    if (!VIEW_TYPES.includes(viewType as (typeof VIEW_TYPES)[number])) {
+      throw new Error(`Invalid view type: "${viewType}". Available: ${VIEW_TYPES.join(', ')}`)
+    }
+
+    const block = await resolveCollectionBlock(creds.token_v2, collectionId)
+    const parentBlockId = block.id
+    const spaceId = block.space_id
+    if (!spaceId) {
+      throw new Error('Could not determine space ID from parent block')
+    }
+
+    const newViewId = generateId()
+    const viewName = options.name ?? `${viewType.charAt(0).toUpperCase()}${viewType.slice(1)} view`
+
+    await internalRequest(creds.token_v2, 'saveTransactions', {
+      requestId: generateId(),
+      transactions: [
+        {
+          id: generateId(),
+          spaceId,
+          operations: [
+            {
+              pointer: { table: 'collection_view', id: newViewId, spaceId },
+              command: 'set',
+              path: [],
+              args: {
+                id: newViewId,
+                type: viewType,
+                name: viewName,
+                parent_id: parentBlockId,
+                parent_table: 'block',
+                alive: true,
+                version: 1,
+              },
+            },
+            {
+              pointer: { table: 'block', id: parentBlockId, spaceId },
+              command: 'listAfter',
+              path: ['view_ids'],
+              args: { id: newViewId },
+            },
+          ],
+        },
+      ],
+    })
+
+    const created = await fetchView(creds.token_v2, newViewId)
+    console.log(
+      formatOutput(
+        {
+          id: created.id,
+          type: created.type,
+          name: (created.name as string) || '',
+        },
+        options.pretty,
+      ),
+    )
+  } catch (error) {
+    console.error(JSON.stringify({ error: (error as Error).message }))
+    process.exit(1)
+  }
+}
+
+async function viewDeleteAction(rawViewId: string, options: ViewDeleteOptions): Promise<void> {
+  const viewId = formatNotionId(rawViewId)
+  try {
+    const creds = await getCredentialsOrExit()
+    await resolveAndSetActiveUserId(creds.token_v2, options.workspaceId)
+
+    const view = await fetchView(creds.token_v2, viewId)
+    const parentId = view.parent_id
+    if (!parentId) {
+      throw new Error('Could not determine parent block for view')
+    }
+
+    const blockResp = (await internalRequest(creds.token_v2, 'syncRecordValues', {
+      requests: [{ pointer: { table: 'block', id: parentId }, version: -1 }],
+    })) as SyncBlockResponse
+
+    const block = Object.values(blockResp.recordMap.block)[0]?.value
+    if (!block) {
+      throw new Error('Parent block not found')
+    }
+
+    const viewIds = block.view_ids ?? []
+    if (viewIds.length <= 1) {
+      throw new Error('Cannot delete the last view of a database')
+    }
+
+    const spaceId = block.space_id
+    if (!spaceId) {
+      throw new Error('Could not determine space ID from parent block')
+    }
+
+    await internalRequest(creds.token_v2, 'saveTransactions', {
+      requestId: generateId(),
+      transactions: [
+        {
+          id: generateId(),
+          spaceId,
+          operations: [
+            {
+              pointer: { table: 'collection_view', id: viewId, spaceId },
+              command: 'update',
+              path: [],
+              args: { alive: false },
+            },
+            {
+              pointer: { table: 'block', id: parentId, spaceId },
+              command: 'listRemove',
+              path: ['view_ids'],
+              args: { id: viewId },
+            },
+          ],
+        },
+      ],
+    })
+
+    console.log(formatOutput({ id: viewId, deleted: true }, options.pretty))
+  } catch (error) {
+    console.error(JSON.stringify({ error: (error as Error).message }))
+    process.exit(1)
+  }
+}
+
 export async function handleDatabaseCreate(
   tokenV2: string,
   args: { parent: string; title: string; properties?: string; workspaceId: string },
@@ -1437,4 +1649,30 @@ export const databaseCommand = new Command('database')
       )
       .option('--pretty', 'Pretty print JSON output')
       .action(viewUpdateAction),
+  )
+  .addCommand(
+    new Command('view-list')
+      .description('List all views for a database')
+      .argument('<database_id>')
+      .requiredOption('--workspace-id <id>', 'Workspace ID (use `workspace list` to find it)')
+      .option('--pretty', 'Pretty print JSON output')
+      .action(viewListAction),
+  )
+  .addCommand(
+    new Command('view-add')
+      .description('Add a new view to a database')
+      .argument('<database_id>')
+      .requiredOption('--workspace-id <id>', 'Workspace ID (use `workspace list` to find it)')
+      .option('--type <type>', 'View type (table, board, calendar, list, gallery, timeline)', 'table')
+      .option('--name <name>', 'View name')
+      .option('--pretty', 'Pretty print JSON output')
+      .action(viewAddAction),
+  )
+  .addCommand(
+    new Command('view-delete')
+      .description('Delete a view from a database')
+      .argument('<view_id>')
+      .requiredOption('--workspace-id <id>', 'Workspace ID (use `workspace list` to find it)')
+      .option('--pretty', 'Pretty print JSON output')
+      .action(viewDeleteAction),
   )
