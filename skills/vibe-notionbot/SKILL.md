@@ -163,6 +163,9 @@ vibe-notionbot block append <parent_id> --markdown '# Hello\n\nThis is **bold** 
 # Append markdown from a file
 vibe-notionbot block append <parent_id> --markdown-file ./content.md
 
+# Append nested markdown (indented lists become nested children blocks)
+vibe-notionbot block append <parent_id> --markdown '- Parent item\n  - Child item\n    - Grandchild item'
+
 # Update a block's content
 vibe-notionbot block update <block_id> --content '{"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated content"}}]}}'
 
@@ -207,6 +210,9 @@ vibe-notionbot search "Notes" --page-size 10 --start-cursor <cursor>
 # List comments on a page
 vibe-notionbot comment list --page <page_id>
 vibe-notionbot comment list --page <page_id> --page-size 10 --start-cursor <cursor>
+
+# List inline comments on a specific block
+vibe-notionbot comment list --block <block_id>
 
 # Create a comment on a page
 vibe-notionbot comment create "This is a comment" --page <page_id>

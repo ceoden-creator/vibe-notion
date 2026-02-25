@@ -127,10 +127,10 @@ vibe-notionbot page get <page-id> --pretty
 | `workspace` | List accessible workspaces |
 | `page` | Get, list, create, update, archive pages |
 | `database` | Get schema, query, create, update, delete properties, add/update rows, list, manage views |
-| `block` | Get, list children, append, update, delete blocks |
+| `block` | Get, list children, append (with nested markdown support), update, delete blocks |
 | `user` | Get current user, get user by ID |
 | `search` | Workspace search |
-| `comment` | List, create, and get comments |
+| `comment` | List, create, and get comments (including inline block-level comments) |
 
 > All commands that operate within a workspace require `--workspace-id`. Use `vibe-notion workspace list` to find yours.
 
@@ -141,10 +141,10 @@ vibe-notionbot page get <page-id> --pretty
 | `auth` | Check authentication status |
 | `page` | Get, create, update, archive pages, retrieve properties |
 | `database` | Get schema, query, create, update, delete properties, list databases |
-| `block` | Get, list children, append, update, delete blocks |
+| `block` | Get, list children, append (with nested markdown support), update, delete blocks |
 | `user` | List users, get user info, get bot info |
 | `search` | Global workspace search with filters |
-| `comment` | List, create, and get comments |
+| `comment` | List, create, and get comments (including inline block-level comments) |
 
 > Requires `NOTION_TOKEN` environment variable with an Integration token from the [Notion Developer Portal](https://www.notion.so/my-integrations).
 

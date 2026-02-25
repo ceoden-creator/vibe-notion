@@ -296,6 +296,9 @@ vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown '#
 # Append markdown from a file
 vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown-file ./content.md
 
+# Append nested markdown (indented lists become nested children blocks)
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown '- Parent item\n  - Child item\n    - Grandchild item'
+
 # Update a block
 vibe-notion block update <block_id> --workspace-id <workspace_id> --content '{"properties":{"title":[["Updated text"]]}}' --pretty
 
@@ -326,6 +329,14 @@ The internal API uses a specific block format. Here are all supported types:
 ```json
 {"type": "bulleted_list", "properties": {"title": [["Bullet item"]]}}
 {"type": "numbered_list", "properties": {"title": [["Numbered item"]]}}
+```
+
+#### Nested Children
+
+List blocks support nested children via the `children` property:
+
+```json
+{"type": "bulleted_list", "properties": {"title": [["Parent"]]}, "children": [{"type": "bulleted_list", "properties": {"title": [["Child"]]}}]}
 ```
 
 #### To-Do / Checkbox
@@ -374,6 +385,9 @@ Multiple segments: `[["plain "], ["bold", [["b"]]], [" more plain"]]`
 ```bash
 # List comments on a page
 vibe-notion comment list --page <page_id> --workspace-id <workspace_id> --pretty
+
+# List inline comments on a specific block
+vibe-notion comment list --page <page_id> --block <block_id> --workspace-id <workspace_id> --pretty
 
 # Create a comment on a page (starts a new discussion)
 vibe-notion comment create "This is a comment" --page <page_id> --workspace-id <workspace_id> --pretty
