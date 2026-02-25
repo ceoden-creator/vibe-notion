@@ -1,6 +1,10 @@
 # Vibe Notion
 
-**Give your AI agent the power to read and write Notion pages, databases, and more**
+[![npm version](https://img.shields.io/npm/v/vibe-notion)](https://www.npmjs.com/package/vibe-notion) [![SkillPad - vibe-notion](https://img.shields.io/badge/SkillPad-vibe--notion-1a1a1a)](https://skillpad.dev/install/devxoul/vibe-notion/vibe-notion) [![SkillPad - vibe-notionbot](https://img.shields.io/badge/SkillPad-vibe--notionbot-1a1a1a)](https://skillpad.dev/install/devxoul/vibe-notion/vibe-notionbot)
+
+![demo](./docs/public/vibe-notion-demo.gif)
+
+**Give your AI agent the power to read and write Notion pages, databases, and more ✨**
 
 A full-coverage, agent-friendly CLI for the Notion API. Ships two CLIs — `vibe-notion` for the unofficial private API (act as yourself) and `vibe-notionbot` for the official Integration API (act as a bot).
 
@@ -9,6 +13,10 @@ A full-coverage, agent-friendly CLI for the Notion API. Ships two CLIs — `vibe
 - [Why Vibe Notion?](#-why-vibe-notion)
 - [Installation](#-installation)
 - [Agent Skills](#-agent-skills)
+  - [SkillPad](#skillpad)
+  - [Skills CLI](#skills-cli)
+  - [Claude Code Plugin](#claude-code-plugin)
+  - [OpenCode Plugin](#opencode-plugin)
 - [Quick Start](#-quick-start)
 - [Command Overview](#-command-overview)
 - [Use Cases](#-use-cases)
@@ -26,7 +34,6 @@ Need official API access instead? `vibe-notionbot` is included and fully support
 - 🤖 **Bot support too** — `vibe-notionbot` supports official Integration tokens via `NOTION_TOKEN`
 - 📦 **Full API coverage** — Pages, databases, blocks, users, search, comments, and workspaces
 - 🧾 **Agent friendly** — JSON output by default, perfect for LLM tool use
-- 👁 **Human friendly too** — Add `--pretty` for readable output
 - 🧠 **Agent memory** — Remembers workspace IDs, page names, and preferences across sessions
 - 🪙 **Token efficient** — CLI, not MCP. Load only what you need. ([Why not MCP?](#-philosophy))
 
@@ -47,31 +54,29 @@ Vibe Notion includes [Agent Skills](https://agentskills.io/) that teach your AI 
 - **`vibe-notion`** — For the unofficial private API (`token_v2`)
 - **`vibe-notionbot`** — For the official Integration API (`NOTION_TOKEN`)
 
+### SkillPad
+
+SkillPad is a GUI app for Agent Skills. See [skillpad.dev](https://skillpad.dev/) for more details.
+
 [![Available on SkillPad](https://badge.skillpad.dev/vibe-notion/dark.svg)](https://skillpad.dev/install/devxoul/vibe-notion/vibe-notion) [![Available on SkillPad](https://badge.skillpad.dev/vibe-notionbot/dark.svg)](https://skillpad.dev/install/devxoul/vibe-notion/vibe-notionbot)
 
-### Skills CLI (OpenCode, Cline, etc.)
+
+### Skills CLI
+
+Skills CLI is a CLI tool for Agent Skills. See [skills.sh](https://skills.sh/) for more details.
 
 ```bash
 npx skills add devxoul/vibe-notion
 ```
 
-See [skills.sh](https://skills.sh/) for more details.
-
-### Claude Code
-
-```bash
-claude plugin marketplace add devxoul/vibe-notion
-claude plugin install vibe-notion
-```
-
-Or within Claude Code:
+### Claude Code Plugin
 
 ```
 /plugin marketplace add devxoul/vibe-notion
 /plugin install vibe-notion
 ```
 
-### OpenCode (via plugin)
+### OpenCode Plugin
 
 Add to your `opencode.jsonc`:
 
