@@ -1133,6 +1133,135 @@ describe('PageCommand', () => {
     expect(exitCode).toBe(1)
   })
 
+  test('page create preprocesses markdown images before conversion', async () => {
+    const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string) => {
+      if (endpoint === 'saveTransactions') {
+        return {}
+      }
+      if (endpoint === 'syncRecordValues') {
+        return {
+          recordMap: {
+            block: {
+              'uuid-1': {
+                value: {
+                  id: 'uuid-1',
+                  type: 'page',
+                  parent_id: 'parent-page',
+                  space_id: 'space-123',
+                  properties: {
+                    title: [['New Page']],
+                  },
+                },
+                role: 'editor',
+              },
+            },
+          },
+        }
+      }
+      return {}
+    })
+    const mockPreprocessMarkdownImages = mock(async (markdown: string) => markdown)
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mock(async () => ({ token_v2: 'test-token' })),
+      generateId: mock(() => 'uuid-1'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-mock'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+      resolveDefaultTeamId: mock(async () => undefined),
+    }))
+
+    mock.module('@/shared/markdown/preprocess-images', () => ({
+      preprocessMarkdownImages: mockPreprocessMarkdownImages,
+    }))
+
+    mock.module('@/shared/markdown/read-input', () => ({
+      readMarkdownInput: mock(() => '![Local](./images/cat.png)'),
+    }))
+
+    const { handlePageCreate } = await import('./page')
+    await handlePageCreate('test-token', {
+      parent: 'parent-page',
+      title: 'New Page',
+      markdown: '![Local](./images/cat.png)',
+      workspaceId: 'space-123',
+    })
+
+    expect(mockPreprocessMarkdownImages).toHaveBeenCalledTimes(1)
+    expect(mockPreprocessMarkdownImages).toHaveBeenCalledWith(
+      '![Local](./images/cat.png)',
+      expect.any(Function),
+      process.cwd(),
+    )
+  })
+
+  test('page create skips markdown preprocessing when no local images exist', async () => {
+    const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string) => {
+      if (endpoint === 'saveTransactions') {
+        return {}
+      }
+      if (endpoint === 'syncRecordValues') {
+        return {
+          recordMap: {
+            block: {
+              'uuid-1': {
+                value: {
+                  id: 'uuid-1',
+                  type: 'page',
+                  parent_id: 'parent-page',
+                  space_id: 'space-123',
+                  properties: {
+                    title: [['New Page']],
+                  },
+                },
+                role: 'editor',
+              },
+            },
+          },
+        }
+      }
+      return {}
+    })
+    const mockPreprocessMarkdownImages = mock(async () => '# Should not be used')
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mock(async () => ({ token_v2: 'test-token' })),
+      generateId: mock(() => 'uuid-1'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-mock'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+      resolveDefaultTeamId: mock(async () => undefined),
+    }))
+
+    mock.module('@/shared/markdown/preprocess-images', () => ({
+      preprocessMarkdownImages: mockPreprocessMarkdownImages,
+    }))
+
+    mock.module('@/shared/markdown/read-input', () => ({
+      readMarkdownInput: mock(() => '# Heading'),
+    }))
+
+    const { handlePageCreate } = await import('./page')
+    await handlePageCreate('test-token', {
+      parent: 'parent-page',
+      title: 'New Page',
+      markdown: '# Heading',
+      workspaceId: 'space-123',
+    })
+
+    expect(mockPreprocessMarkdownImages).not.toHaveBeenCalled()
+  })
+
   test('page create with markdown appends blocks to new page', async () => {
     let saveTransactionsCalls = 0
     const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string, body: any) => {

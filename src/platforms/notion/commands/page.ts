@@ -1,6 +1,9 @@
+import path from 'node:path'
 import { Command } from 'commander'
 import { internalRequest } from '@/platforms/notion/client'
 import { formatBacklinks, formatBlockRecord, formatPageGet } from '@/platforms/notion/formatters'
+import { uploadFile } from '@/platforms/notion/upload'
+import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
 import { markdownToBlocks } from '@/shared/markdown/to-notion-internal'
 import { formatNotionId } from '@/shared/utils/id'
@@ -64,6 +67,8 @@ type Operation = {
   path: string[]
   args: unknown
 }
+
+const LOCAL_MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*\]\((?![^)]+:\/\/)[^)]+\)/
 
 function pickBlock(response: SyncRecordValuesResponse, blockId: string): BlockRecord | undefined {
   return response.recordMap.block[blockId] ?? Object.values(response.recordMap.block)[0]
@@ -288,7 +293,16 @@ export async function handlePageCreate(
   })
 
   if (args.markdown || args.markdownFile) {
-    const markdown = readMarkdownInput({ markdown: args.markdown, markdownFile: args.markdownFile })
+    const rawMarkdown = readMarkdownInput({ markdown: args.markdown, markdownFile: args.markdownFile })
+    const basePath = args.markdownFile ? path.dirname(path.resolve(args.markdownFile)) : process.cwd()
+    const uploadFn = async (filePath: string): Promise<string> => {
+      await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
+      const result = await uploadFile(tokenV2, newPageId, filePath, spaceId)
+      return result.url
+    }
+    const markdown = LOCAL_MARKDOWN_IMAGE_PATTERN.test(rawMarkdown)
+      ? await preprocessMarkdownImages(rawMarkdown, uploadFn, basePath)
+      : rawMarkdown
     const blockDefs = markdownToBlocks(markdown)
 
     if (blockDefs.length > 0) {
@@ -423,7 +437,16 @@ export async function handlePageUpdate(
       throw new Error('--replace-content requires --markdown or --markdown-file')
     }
 
-    const md = readMarkdownInput({ markdown: args.markdown, markdownFile: args.markdownFile })
+    const rawMarkdown = readMarkdownInput({ markdown: args.markdown, markdownFile: args.markdownFile })
+    const basePath = args.markdownFile ? path.dirname(path.resolve(args.markdownFile)) : process.cwd()
+    const uploadFn = async (filePath: string): Promise<string> => {
+      await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
+      const result = await uploadFile(tokenV2, pageId, filePath, spaceId)
+      return result.url
+    }
+    const md = LOCAL_MARKDOWN_IMAGE_PATTERN.test(rawMarkdown)
+      ? await preprocessMarkdownImages(rawMarkdown, uploadFn, basePath)
+      : rawMarkdown
     const newBlocks = markdownToBlocks(md)
 
     const pageChunk = (await internalRequest(tokenV2, 'loadPageChunk', {
