@@ -234,14 +234,14 @@ describe('notionbot batch command', () => {
   test('block.upload action calls upload handler with correct args', async () => {
     const handlers = createMockHandlers()
     const { deps, output, getExitCode } = createDefaultDeps(handlers)
-    handlers.mockBlockUpload.mockImplementationOnce(async () => ({ id: 'file-1', type: 'image', url: 'https://example.com/file.png' }))
+    handlers.mockBlockUpload.mockImplementationOnce(async () => ({
+      id: 'file-1',
+      type: 'image',
+      url: 'https://example.com/file.png',
+    }))
 
     const { executeBatch } = await import('./batch')
-    await executeBatch(
-      '[{"action":"block.upload","parent_id":"block-1","file":"/tmp/image.png"}]',
-      {},
-      deps,
-    )
+    await executeBatch('[{"action":"block.upload","parent_id":"block-1","file":"/tmp/image.png"}]', {}, deps)
 
     expect(handlers.mockBlockUpload).toHaveBeenCalledTimes(1)
     const callArgs = handlers.mockBlockUpload.mock.calls[0] as unknown[]
@@ -250,7 +250,14 @@ describe('notionbot batch command', () => {
     expect(handlerArgs.parent_id).toBe('block-1')
     expect(handlerArgs.file).toBe('/tmp/image.png')
     expect(JSON.parse(output[0])).toEqual({
-      results: [{ index: 0, action: 'block.upload', success: true, data: { id: 'file-1', type: 'image', url: 'https://example.com/file.png' } }],
+      results: [
+        {
+          index: 0,
+          action: 'block.upload',
+          success: true,
+          data: { id: 'file-1', type: 'image', url: 'https://example.com/file.png' },
+        },
+      ],
       total: 1,
       succeeded: 1,
       failed: 0,
