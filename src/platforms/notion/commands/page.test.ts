@@ -1374,7 +1374,10 @@ describe('PageCommand', () => {
     console.log = (msg: string) => output.push(msg)
 
     try {
-      await pageCommand.parseAsync(['create', '--workspace-id', 'space-123', '--parent', 'parent-page', '--title', 'Child Page'], { from: 'user' })
+      await pageCommand.parseAsync(
+        ['create', '--workspace-id', 'space-123', '--parent', 'parent-page', '--title', 'Child Page'],
+        { from: 'user' },
+      )
     } catch {
       // Expected to exit
     }

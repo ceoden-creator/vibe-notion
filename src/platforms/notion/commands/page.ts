@@ -533,19 +533,20 @@ export async function handlePageArchive(
     throw new Error(`Could not determine parent_id or space_id for page: ${pageId}`)
   }
 
-  const listRemoveOp: Operation = parentTable === 'space'
-    ? {
-        pointer: { table: 'space', id: parentId, spaceId },
-        command: 'listRemove',
-        path: ['pages'],
-        args: { id: pageId },
-      }
-    : {
-        pointer: { table: 'block', id: parentId, spaceId },
-        command: 'listRemove',
-        path: ['content'],
-        args: { id: pageId },
-      }
+  const listRemoveOp: Operation =
+    parentTable === 'space'
+      ? {
+          pointer: { table: 'space', id: parentId, spaceId },
+          command: 'listRemove',
+          path: ['pages'],
+          args: { id: pageId },
+        }
+      : {
+          pointer: { table: 'block', id: parentId, spaceId },
+          command: 'listRemove',
+          path: ['content'],
+          args: { id: pageId },
+        }
 
   const operations: Operation[] = [
     {
