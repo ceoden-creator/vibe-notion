@@ -2,7 +2,7 @@ import path from 'node:path'
 import { Command } from 'commander'
 import { internalRequest } from '@/platforms/notion/client'
 import { formatBacklinks, formatBlockChildren, formatBlockValue } from '@/platforms/notion/formatters'
-import { uploadFile } from '@/platforms/notion/upload'
+import { uploadFile, uploadFileOnly } from '@/platforms/notion/upload'
 import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
 import { markdownToBlocks } from '@/shared/markdown/to-notion-internal'
@@ -309,7 +309,7 @@ export async function handleBlockAppend(
     const uploadFn = async (filePath: string): Promise<string> => {
       await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
       const spaceId = await resolveSpaceId(tokenV2, parentId)
-      const result = await uploadFile(tokenV2, parentId, filePath, spaceId)
+      const result = await uploadFileOnly(tokenV2, filePath, parentId, spaceId)
       return result.url
     }
     const markdown = LOCAL_MARKDOWN_IMAGE_PATTERN.test(rawMarkdown)
@@ -486,10 +486,11 @@ async function uploadAction(
 ): Promise<void> {
   try {
     const creds = await getCredentialsOrExit()
-    await resolveAndSetActiveUserId(creds.token_v2, options.workspaceId)
-    const parentId = formatNotionId(rawParentId)
-    const spaceId = await resolveSpaceId(creds.token_v2, parentId)
-    const result = await uploadFile(creds.token_v2, parentId, options.file, spaceId)
+    const result = await handleBlockUpload(creds.token_v2, {
+      parent_id: rawParentId,
+      file: options.file,
+      workspaceId: options.workspaceId,
+    })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
     console.error(JSON.stringify({ error: getErrorMessage(error) }))

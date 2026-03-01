@@ -2,7 +2,7 @@ import path from 'node:path'
 import { Command } from 'commander'
 import { internalRequest } from '@/platforms/notion/client'
 import { formatBacklinks, formatBlockRecord, formatPageGet } from '@/platforms/notion/formatters'
-import { uploadFile } from '@/platforms/notion/upload'
+import { uploadFileOnly } from '@/platforms/notion/upload'
 import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
 import { markdownToBlocks } from '@/shared/markdown/to-notion-internal'
@@ -297,7 +297,7 @@ export async function handlePageCreate(
     const basePath = args.markdownFile ? path.dirname(path.resolve(args.markdownFile)) : process.cwd()
     const uploadFn = async (filePath: string): Promise<string> => {
       await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
-      const result = await uploadFile(tokenV2, newPageId, filePath, spaceId)
+      const result = await uploadFileOnly(tokenV2, filePath, newPageId, spaceId)
       return result.url
     }
     const markdown = LOCAL_MARKDOWN_IMAGE_PATTERN.test(rawMarkdown)
@@ -441,7 +441,7 @@ export async function handlePageUpdate(
     const basePath = args.markdownFile ? path.dirname(path.resolve(args.markdownFile)) : process.cwd()
     const uploadFn = async (filePath: string): Promise<string> => {
       await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
-      const result = await uploadFile(tokenV2, pageId, filePath, spaceId)
+      const result = await uploadFileOnly(tokenV2, filePath, pageId, spaceId)
       return result.url
     }
     const md = LOCAL_MARKDOWN_IMAGE_PATTERN.test(rawMarkdown)

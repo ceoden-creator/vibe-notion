@@ -1658,6 +1658,14 @@ describe('blockCommand', () => {
 
       mock.module('@/platforms/notion/upload', () => ({
         uploadFile: mockUploadFile,
+        uploadFileOnly: mock(() =>
+          Promise.resolve({
+            url: 'https://s3.us-west-2.amazonaws.com/file.png',
+            fileId: 'file-1',
+            contentType: 'image/png',
+            name: 'test.png',
+          }),
+        ),
       }))
 
       const { blockCommand } = await import('./block')
@@ -1705,6 +1713,7 @@ describe('blockCommand', () => {
 
       mock.module('@/platforms/notion/upload', () => ({
         uploadFile: mock(() => Promise.resolve({})),
+        uploadFileOnly: mock(() => Promise.resolve({ url: '', fileId: '', contentType: '', name: '' })),
       }))
 
       const { blockCommand } = await import('./block')
