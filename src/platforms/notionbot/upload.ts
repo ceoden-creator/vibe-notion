@@ -54,6 +54,7 @@ export async function uploadFile(
   parentId: string,
   filePath: string,
   afterId?: string,
+  beforeId?: string,
 ): Promise<UploadedBlock> {
   const upload = await uploadFileOnly(client, filePath)
 
@@ -75,10 +76,18 @@ export async function uploadFile(
           },
         }
 
+  let positionArgs: Record<string, unknown> = {}
+  if (beforeId) {
+    const resolved = await client.resolveBeforePosition(parentId, beforeId)
+    positionArgs = resolved
+  } else if (afterId) {
+    positionArgs = { after: afterId }
+  }
+
   const appendResponse = (await client.blocks.children.append({
     block_id: parentId,
     children: [blockObject],
-    ...(afterId ? { after: afterId } : {}),
+    ...positionArgs,
   })) as AppendResult
 
   const blockId = appendResponse.results?.[0]?.results?.[0]?.id
