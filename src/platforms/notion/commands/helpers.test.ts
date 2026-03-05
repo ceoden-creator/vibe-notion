@@ -114,6 +114,15 @@ async function resolveAndSetActiveUserId(tokenV2: string, workspaceId?: string):
       return
     }
   }
+
+  const availableIds = Object.values(response).flatMap((entry) => (entry.space ? Object.keys(entry.space) : []))
+  console.error(
+    JSON.stringify({
+      warning: `Workspace ${workspaceId} not found in your spaces`,
+      available_workspace_ids: availableIds,
+      hint: 'Run: vibe-notion workspace list',
+    }),
+  )
 }
 
 function formatNotionId(id: string): string {
@@ -468,15 +477,30 @@ describe('resolveAndSetActiveUserId', () => {
     expect(_capturedActiveUserId).toBe('user-aaa')
   })
 
-  test('does not set active user when workspace is not found', async () => {
+  test('warns and lists available workspaces when workspace is not found', async () => {
     _mockInternalRequest = () =>
       Promise.resolve({
         'user-aaa': { space: { 'workspace-111': {} } },
       })
 
-    await resolveAndSetActiveUserId('token', 'workspace-999')
+    const errorCalls: unknown[][] = []
+    const originalError = console.error
+    console.error = ((...args: unknown[]) => {
+      errorCalls.push(args)
+    }) as never
 
-    expect(_capturedActiveUserId).toBeUndefined()
+    try {
+      await resolveAndSetActiveUserId('token', 'workspace-999')
+
+      expect(_capturedActiveUserId).toBeUndefined()
+      expect(errorCalls.length).toBe(1)
+      const output = JSON.parse(errorCalls[0][0] as string)
+      expect(output.warning).toContain('workspace-999')
+      expect(output.available_workspace_ids).toEqual(['workspace-111'])
+      expect(output.hint).toContain('workspace list')
+    } finally {
+      console.error = originalError
+    }
   })
 
   test('calls getSpaces with correct parameters', async () => {
