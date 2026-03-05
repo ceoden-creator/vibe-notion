@@ -90,6 +90,15 @@ export async function resolveAndSetActiveUserId(tokenV2: string, workspaceId?: s
       return
     }
   }
+
+  const availableIds = Object.values(response).flatMap((entry) => (entry.space ? Object.keys(entry.space) : []))
+  console.error(
+    JSON.stringify({
+      warning: `Workspace ${workspaceId} not found in your spaces`,
+      available_workspace_ids: availableIds,
+      hint: 'Run: vibe-notion workspace list',
+    }),
+  )
 }
 
 export async function resolveDefaultTeamId(tokenV2: string, workspaceId: string): Promise<string | undefined> {
