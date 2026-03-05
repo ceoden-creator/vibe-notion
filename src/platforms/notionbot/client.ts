@@ -133,7 +133,7 @@ export function getClient(): NotionClient {
 export function getClientOrThrow(): NotionClient {
   const token = process.env.NOTION_TOKEN
   if (!token) {
-    throw new Error('NOTION_TOKEN environment variable is not set')
+    throw new Error('NOTION_TOKEN is required. Create an integration at https://www.notion.so/profile/integrations')
   }
   return new NotionClient(token)
 }
