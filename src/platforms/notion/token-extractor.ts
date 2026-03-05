@@ -22,6 +22,7 @@ export interface ExtractedToken {
 export class TokenExtractor {
   private platform: NodeJS.Platform
   private notionDir: string
+  private cachedMasterKey: Buffer | null | undefined = undefined
 
   constructor(platform?: NodeJS.Platform, notionDir?: string) {
     this.platform = platform ?? process.platform
@@ -125,9 +126,14 @@ export class TokenExtractor {
   }
 
   getWindowsMasterKey(): Buffer | null {
+    if (this.cachedMasterKey !== undefined) {
+      return this.cachedMasterKey
+    }
+
     try {
       const localStatePath = join(this.notionDir, 'Local State')
       if (!existsSync(localStatePath)) {
+        this.cachedMasterKey = null
         return null
       }
 
@@ -136,16 +142,20 @@ export class TokenExtractor {
       }
       const encryptedKeyB64 = localState?.os_crypt?.encrypted_key
       if (!encryptedKeyB64) {
+        this.cachedMasterKey = null
         return null
       }
 
       const encryptedKey = Buffer.from(encryptedKeyB64, 'base64')
       if (encryptedKey.subarray(0, 5).toString() !== 'DPAPI') {
+        this.cachedMasterKey = null
         return null
       }
 
-      return this.decryptDpapi(encryptedKey.subarray(5))
+      this.cachedMasterKey = this.decryptDpapi(encryptedKey.subarray(5))
+      return this.cachedMasterKey
     } catch {
+      this.cachedMasterKey = null
       return null
     }
   }
