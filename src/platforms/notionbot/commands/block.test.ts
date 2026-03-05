@@ -423,7 +423,7 @@ describe('block commands', () => {
 
     // Then
     const allOutput = [...consoleOutput, ...consoleErrors].join('\n')
-    expect(allOutput).toContain('Provide either --markdown or --markdown-file, not both')
+    expect(allOutput).toContain('--content and --markdown/--markdown-file are mutually exclusive')
   })
 
   test('append with both --after and --before errors', async () => {

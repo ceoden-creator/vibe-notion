@@ -125,7 +125,7 @@ export async function handleBlockAppend(
 
   const hasMarkdown = args.markdown || args.markdownFile
   if (args.content && hasMarkdown) {
-    throw new Error('Provide either --markdown or --markdown-file, not both')
+    throw new Error('--content and --markdown/--markdown-file are mutually exclusive')
   }
 
   if (args.after && args.before) {

@@ -77,7 +77,7 @@ export async function uploadToS3(signedPutUrl: string, fileBuffer: Buffer, conte
   })
 
   if (!response.ok) {
-    throw new Error('Failed to upload file to S3')
+    throw new Error('Failed to upload file')
   }
 }
 

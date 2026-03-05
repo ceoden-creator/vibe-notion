@@ -235,7 +235,9 @@ describe('getClientOrThrow', () => {
 
     try {
       // When/Then
-      expect(() => getClientOrThrow()).toThrow('NOTION_TOKEN environment variable is not set')
+      expect(() => getClientOrThrow()).toThrow(
+        'NOTION_TOKEN is required. Create an integration at https://www.notion.so/profile/integrations',
+      )
     } finally {
       // Restore
       if (original !== undefined) process.env.NOTION_TOKEN = original
