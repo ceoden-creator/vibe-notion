@@ -2,7 +2,9 @@ import path from 'node:path'
 import { Command } from 'commander'
 import { internalRequest } from '@/platforms/notion/client'
 import {
+  buildPageLookup,
   buildSchemaMapFromCollection,
+  buildUserLookup,
   collectReferenceIds,
   enrichProperties,
   extractNotionTitle,
@@ -581,7 +583,9 @@ export async function handlePageProperties(
       requests: [{ pointer: { table: 'collection', id: parentId }, version: -1 }],
     })) as { recordMap: { collection: Record<string, { value: Record<string, unknown> }> } }
 
-    const collection = Object.values(collResponse.recordMap.collection)[0]?.value
+    const collection = collResponse.recordMap.collection
+      ? Object.values(collResponse.recordMap.collection)[0]?.value
+      : undefined
     if (collection) {
       const schemaMap = buildSchemaMapFromCollection(collection)
       const properties = formatRowProperties(block as unknown as Record<string, unknown>, schemaMap)
@@ -602,8 +606,8 @@ export async function handlePageProperties(
           }
         }
 
-        const pageLookup = buildLookup(batch.recordMap?.block, 'title')
-        const userLookup = buildLookup(batch.recordMap?.notion_user, 'name')
+        const pageLookup = buildPageLookup(batch.recordMap?.block)
+        const userLookup = buildUserLookup(batch.recordMap?.notion_user)
         enrichProperties([row], pageLookup, userLookup)
       }
 
@@ -616,38 +620,6 @@ export async function handlePageProperties(
     title: extractNotionTitle(block as unknown as Record<string, unknown>),
     type: (block.type as string) ?? 'page',
   }
-}
-
-function buildLookup(
-  records: Record<string, Record<string, unknown>> | undefined,
-  field: 'title' | 'name',
-): Record<string, string> {
-  const lookup: Record<string, string> = {}
-  if (!records) return lookup
-
-  for (const [id, record] of Object.entries(records)) {
-    const outer = record.value as Record<string, unknown> | undefined
-    if (!outer) continue
-    const value = (
-      typeof outer.role === 'string' && outer.value !== undefined ? (outer.value as Record<string, unknown>) : outer
-    ) as Record<string, unknown>
-
-    if (field === 'name') {
-      const name = value.name
-      if (typeof name === 'string') lookup[id] = name
-    } else {
-      const properties = value.properties as Record<string, unknown> | undefined
-      const titleSegments = properties?.title
-      if (Array.isArray(titleSegments)) {
-        const title = titleSegments
-          .map((seg: unknown) => (Array.isArray(seg) && typeof seg[0] === 'string' ? seg[0] : ''))
-          .join('')
-        if (title) lookup[id] = title
-      }
-    }
-  }
-
-  return lookup
 }
 
 async function propertiesAction(rawPageId: string, options: PropertiesOptions): Promise<void> {

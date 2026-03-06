@@ -481,6 +481,44 @@ export function formatUserValue(user: Record<string, unknown>): {
   }
 }
 
+export function buildPageLookup(blockMap: Record<string, Record<string, unknown>> | undefined): Record<string, string> {
+  const lookup: Record<string, string> = {}
+  if (!blockMap) return lookup
+
+  for (const [id, record] of Object.entries(blockMap)) {
+    const value = getRecordValue(record)
+    if (!value) continue
+    const properties = value.properties as Record<string, unknown> | undefined
+    const titleSegments = properties?.title
+    if (Array.isArray(titleSegments)) {
+      const title = titleSegments
+        .map((seg: unknown) => (Array.isArray(seg) && typeof seg[0] === 'string' ? seg[0] : ''))
+        .join('')
+      if (title) {
+        lookup[id] = title
+      }
+    }
+  }
+
+  return lookup
+}
+
+export function buildUserLookup(userMap: Record<string, Record<string, unknown>> | undefined): Record<string, string> {
+  const lookup: Record<string, string> = {}
+  if (!userMap) return lookup
+
+  for (const [id, record] of Object.entries(userMap)) {
+    const value = getRecordValue(record)
+    if (!value) continue
+    const name = value.name
+    if (typeof name === 'string') {
+      lookup[id] = name
+    }
+  }
+
+  return lookup
+}
+
 export function collectReferenceIds(results: Array<{ id: string; properties: Record<string, PropertyValue> }>): {
   pageIds: string[]
   userIds: string[]
@@ -667,20 +705,11 @@ function extractRawSchema(recordMap: Record<string, unknown> | undefined): Recor
 function extractSchemaMap(
   recordMap: Record<string, unknown> | undefined,
 ): Record<string, { name: string; type: string }> {
-  const rawSchema = extractRawSchema(recordMap)
-  if (Object.keys(rawSchema).length === 0) return {}
-  const result: Record<string, { name: string; type: string; prefix?: string }> = {}
-  for (const [propId, entry] of Object.entries(rawSchema)) {
-    if (entry.alive === false) continue
-
-    const name = toOptionalString(entry.name)
-    const type = toOptionalString(entry.type)
-    if (name && type) {
-      const prefix = toOptionalString(entry.prefix)
-      result[propId] = prefix ? { name, type, prefix } : { name, type }
-    }
-  }
-  return result
+  if (!recordMap) return {}
+  const collMap = toRecordMap(recordMap.collection)
+  const firstColl = getRecordValue(Object.values(collMap)[0])
+  if (!firstColl) return {}
+  return buildSchemaMapFromCollection(firstColl)
 }
 
 export function buildSchemaMapFromCollection(

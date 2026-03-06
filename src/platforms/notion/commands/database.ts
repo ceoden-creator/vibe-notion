@@ -1,6 +1,8 @@
 import { Command } from 'commander'
 import { internalRequest } from '@/platforms/notion/client'
 import {
+  buildPageLookup,
+  buildUserLookup,
   collectReferenceIds,
   enrichProperties,
   extractCollectionName,
@@ -424,53 +426,6 @@ function buildSchemaOptionUpdates(
       },
     }
   })
-}
-
-function getRecordValue(record: Record<string, unknown>): Record<string, unknown> | undefined {
-  const outer = record.value as Record<string, unknown> | undefined
-  if (!outer) return undefined
-  if (typeof outer.role === 'string' && outer.value !== undefined) {
-    return outer.value as Record<string, unknown>
-  }
-  return outer
-}
-
-function buildPageLookup(blockMap: Record<string, Record<string, unknown>> | undefined): Record<string, string> {
-  const lookup: Record<string, string> = {}
-  if (!blockMap) return lookup
-
-  for (const [id, record] of Object.entries(blockMap)) {
-    const value = getRecordValue(record)
-    if (!value) continue
-    const properties = value.properties as Record<string, unknown> | undefined
-    const titleSegments = properties?.title
-    if (Array.isArray(titleSegments)) {
-      const title = titleSegments
-        .map((seg: unknown) => (Array.isArray(seg) && typeof seg[0] === 'string' ? seg[0] : ''))
-        .join('')
-      if (title) {
-        lookup[id] = title
-      }
-    }
-  }
-
-  return lookup
-}
-
-function buildUserLookup(userMap: Record<string, Record<string, unknown>> | undefined): Record<string, string> {
-  const lookup: Record<string, string> = {}
-  if (!userMap) return lookup
-
-  for (const [id, record] of Object.entries(userMap)) {
-    const value = getRecordValue(record)
-    if (!value) continue
-    const name = value.name
-    if (typeof name === 'string') {
-      lookup[id] = name
-    }
-  }
-
-  return lookup
 }
 
 async function fetchCollection(tokenV2: string, collectionId: string): Promise<CollectionValue> {
