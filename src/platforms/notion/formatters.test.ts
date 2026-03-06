@@ -599,6 +599,40 @@ describe('simplifyCollectionSchema', () => {
       Status: { type: 'select' },
     })
   })
+
+  test('includes prefix for auto_increment_id property', () => {
+    // Given
+    const schema = {
+      title: { name: 'Name', type: 'title' },
+      idProp: { name: 'ID', type: 'auto_increment_id', prefix: 'TASK' },
+    }
+
+    // When
+    const result = simplifyCollectionSchema(schema)
+
+    // Then
+    expect(result).toEqual({
+      Name: { type: 'title' },
+      ID: { type: 'auto_increment_id', prefix: 'TASK' },
+    })
+  })
+
+  test('omits prefix for auto_increment_id without configured prefix', () => {
+    // Given
+    const schema = {
+      title: { name: 'Name', type: 'title' },
+      idProp: { name: 'ID', type: 'auto_increment_id' },
+    }
+
+    // When
+    const result = simplifyCollectionSchema(schema)
+
+    // Then
+    expect(result).toEqual({
+      Name: { type: 'title' },
+      ID: { type: 'auto_increment_id' },
+    })
+  })
 })
 
 describe('validateCollectionSchema', () => {
@@ -778,6 +812,31 @@ describe('formatCollectionValue', () => {
       schema: {
         Name: { type: 'title' },
         Status: { type: 'select', options: ['Open'] },
+      },
+    })
+  })
+
+  test('includes auto_increment_id prefix in schema', () => {
+    // Given
+    const collection = {
+      id: 'collection-4',
+      name: [['Task Tracker']],
+      schema: {
+        title: { name: 'Name', type: 'title' },
+        idProp: { name: 'Task ID', type: 'auto_increment_id', prefix: 'TASK' },
+      },
+    }
+
+    // When
+    const result = formatCollectionValue(collection)
+
+    // Then
+    expect(result).toEqual({
+      id: 'collection-4',
+      name: 'Task Tracker',
+      schema: {
+        Name: { type: 'title' },
+        'Task ID': { type: 'auto_increment_id', prefix: 'TASK' },
       },
     })
   })
