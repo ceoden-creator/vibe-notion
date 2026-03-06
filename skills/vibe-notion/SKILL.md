@@ -208,6 +208,9 @@ vibe-notion page update <page_id> --workspace-id <workspace_id> --icon "🚀" --
 
 # Archive a page
 vibe-notion page archive <page_id> --workspace-id <workspace_id> --pretty
+
+# Get page or database row properties (without content blocks — lightweight alternative to page get)
+vibe-notion page properties <page_id> --workspace-id <workspace_id> --pretty
 ```
 
 ### Database Commands
@@ -236,6 +239,8 @@ vibe-notion database create --workspace-id <workspace_id> --parent <page_id> --t
 
 # Update database title or schema
 vibe-notion database update <database_id> --workspace-id <workspace_id> --title "New Name" --pretty
+vibe-notion database update <database_id> --workspace-id <workspace_id> --properties '{"status":{"name":"Status","type":"select"}}' --pretty
+vibe-notion database update <database_id> --workspace-id <workspace_id> --title "New Name" --properties '{"status":{"name":"Status","type":"select"}}' --pretty
 
 # Add a row to a database
 vibe-notion database add-row <database_id> --workspace-id <workspace_id> --title "Row title" --pretty

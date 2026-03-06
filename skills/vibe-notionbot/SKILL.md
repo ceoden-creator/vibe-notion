@@ -138,6 +138,8 @@ vibe-notionbot database create --parent <page_id> --title "My Database" --proper
 
 # Update a database schema or title
 vibe-notionbot database update <database_id> --title "Updated Title"
+vibe-notionbot database update <database_id> --properties '{"Status": {"select": {"options": [{"name": "Active"}, {"name": "Archived"}]}}}'
+vibe-notionbot database update <database_id> --title "Updated Title" --properties '{"Status": {"select": {}}}'
 
 # Delete a property from a database
 vibe-notionbot database delete-property <database_id> --property "Status"
