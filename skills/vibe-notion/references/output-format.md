@@ -54,7 +54,7 @@ vibe-notion database query <database_id> --workspace-id <workspace_id>
   "name": "My Database",
   "schema": { "Name": "title", "Status": "select" },
   "$hints": [
-    "Rollup 'Revenue Sum' depends on deleted relation 'Deals'. This rollup will return empty values. Fix: run `database delete-property --property \"Revenue Sum\"` to remove it."
+    "Rollup 'Revenue Sum' depends on deleted relation 'Deals'. This rollup will return empty values. Fix: run `database delete-property <database_id> --workspace-id <workspace_id> --property \"Revenue Sum\"` to remove it."
   ]
 }
 ```
