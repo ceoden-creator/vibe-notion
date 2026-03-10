@@ -2,6 +2,7 @@ import { Command } from 'commander'
 
 import { getActiveUserId, internalRequest } from '@/platforms/notion/client'
 import { formatCommentValue, formatDiscussionComments } from '@/platforms/notion/formatters'
+import { handleNotionError } from '@/shared/utils/error-handler'
 import { formatNotionId } from '@/shared/utils/id'
 import { formatOutput } from '@/shared/utils/output'
 
@@ -106,8 +107,7 @@ async function listAction(options: ListOptions): Promise<void> {
     }
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -269,8 +269,7 @@ async function createAction(text: string, options: CreateOptions): Promise<void>
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -305,8 +304,7 @@ async function getAction(commentId: string, options: GetOptions): Promise<void> 
     const result = formatCommentValue(comment, blocks)
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 

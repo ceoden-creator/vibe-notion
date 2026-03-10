@@ -8,6 +8,7 @@ import { uploadFile, uploadFileOnly } from '@/platforms/notion/upload'
 import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
 import { markdownToBlocks } from '@/shared/markdown/to-notion-internal'
+import { handleNotionError } from '@/shared/utils/error-handler'
 import { formatNotionId } from '@/shared/utils/id'
 import { formatOutput } from '@/shared/utils/output'
 
@@ -104,10 +105,6 @@ type BlockDefinition = {
 
 const LOCAL_MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*\]\((?![^)]+:\/\/)[^)]+\)/
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error'
-}
-
 function parseBlockDefinitions(content: string): BlockDefinition[] {
   const parsed = JSON.parse(content) as unknown
   if (!Array.isArray(parsed)) {
@@ -197,8 +194,7 @@ async function getAction(rawBlockId: string, options: BlockGetOptions): Promise<
       console.log(formatOutput(result, options.pretty))
     }
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -228,8 +224,7 @@ async function childrenAction(rawBlockId: string, options: ChildListOptions): Pr
 
     console.log(formatOutput(output, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -533,8 +528,7 @@ async function appendAction(rawParentId: string, options: AppendOptions): Promis
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -548,8 +542,7 @@ async function updateAction(rawBlockId: string, options: UpdateOptions): Promise
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -562,8 +555,7 @@ async function deleteAction(rawBlockId: string, options: WorkspaceOptions): Prom
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -582,8 +574,7 @@ async function uploadAction(
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -601,8 +592,7 @@ async function moveAction(rawBlockId: string, options: MoveOptions): Promise<voi
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: getErrorMessage(error) }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 

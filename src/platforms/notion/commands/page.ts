@@ -19,6 +19,7 @@ import { uploadFileOnly } from '@/platforms/notion/upload'
 import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
 import { markdownToBlocks } from '@/shared/markdown/to-notion-internal'
+import { handleNotionError } from '@/shared/utils/error-handler'
 import { formatNotionId } from '@/shared/utils/id'
 import { formatOutput } from '@/shared/utils/output'
 
@@ -197,8 +198,7 @@ async function listAction(options: ListPageOptions): Promise<void> {
 
     console.log(formatOutput(output, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -245,8 +245,7 @@ async function getAction(rawPageId: string, options: LoadPageChunkOptions): Prom
       console.log(formatOutput(result, options.pretty))
     }
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -390,8 +389,7 @@ async function createAction(options: CreatePageOptions): Promise<void> {
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -568,8 +566,7 @@ async function updateAction(rawPageId: string, options: UpdatePageOptions): Prom
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -646,8 +643,7 @@ async function propertiesAction(rawPageId: string, options: PropertiesOptions): 
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 
@@ -722,8 +718,7 @@ async function archiveAction(rawPageId: string, options: ArchivePageOptions): Pr
     })
     console.log(formatOutput(result, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error)
   }
 }
 

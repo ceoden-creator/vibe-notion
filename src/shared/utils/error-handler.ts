@@ -11,6 +11,12 @@ export function handleError(error: Error): void {
   process.exit(1)
 }
 
+export function handleNotionError(error: unknown): void {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error'
+  console.error(JSON.stringify({ error: message }))
+  process.exit(1)
+}
+
 function getNotionErrorHint(code: string): string | undefined {
   switch (code) {
     case APIErrorCode.ObjectNotFound:
