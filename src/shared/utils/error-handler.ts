@@ -11,6 +11,11 @@ export function handleError(error: Error): void {
   process.exit(1)
 }
 
+export function handleNotionError(error: Error): void {
+  console.error(JSON.stringify({ error: error.message }))
+  process.exit(1)
+}
+
 function getNotionErrorHint(code: string): string | undefined {
   switch (code) {
     case APIErrorCode.ObjectNotFound:
