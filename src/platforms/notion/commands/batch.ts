@@ -15,6 +15,7 @@ import {
   executeBatch as executeSharedBatch,
   toErrorMessage,
 } from '@/shared/batch/execute'
+import { handleNotionError } from '@/shared/utils/error-handler'
 
 import { handleBlockAppend, handleBlockDelete, handleBlockMove, handleBlockUpdate, handleBlockUpload } from './block'
 import { handleCommentCreate } from './comment'
@@ -122,7 +123,6 @@ export const batchCommand = new Command('batch')
     try {
       await executeBatch(operations, options)
     } catch (error) {
-      console.error(JSON.stringify({ error: toErrorMessage(error) }))
-      process.exit(1)
+      handleNotionError(error instanceof Error ? error : new Error(toErrorMessage(error)))
     }
   })

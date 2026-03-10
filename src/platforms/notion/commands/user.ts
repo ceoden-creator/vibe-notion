@@ -2,6 +2,7 @@ import { Command } from 'commander'
 
 import { internalRequest } from '@/platforms/notion/client'
 import { formatUserValue } from '@/platforms/notion/formatters'
+import { handleNotionError } from '@/shared/utils/error-handler'
 import { formatOutput } from '@/shared/utils/output'
 
 import { type CommandOptions, getCredentialsOrExit, resolveAndSetActiveUserId } from './helpers'
@@ -56,8 +57,7 @@ async function getAction(userId: string, options: UserGetOptions): Promise<void>
 
     console.log(formatOutput(formatUserValue(user as Record<string, unknown>), options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error as Error)
   }
 }
 
@@ -84,8 +84,7 @@ async function meAction(options: CommandOptions): Promise<void> {
     const output = accounts.length === 1 ? accounts[0] : accounts
     console.log(formatOutput(output, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error as Error)
   }
 }
 

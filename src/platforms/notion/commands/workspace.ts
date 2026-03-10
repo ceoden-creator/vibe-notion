@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 
 import { internalRequest } from '@/platforms/notion/client'
+import { handleNotionError } from '@/shared/utils/error-handler'
 import { formatOutput } from '@/shared/utils/output'
 
 import { type CommandOptions, getCredentialsOrExit } from './helpers'
@@ -49,8 +50,7 @@ async function listAction(options: CommandOptions): Promise<void> {
 
     console.log(formatOutput(workspaces, options.pretty))
   } catch (error) {
-    console.error(JSON.stringify({ error: (error as Error).message }))
-    process.exit(1)
+    handleNotionError(error as Error)
   }
 }
 
