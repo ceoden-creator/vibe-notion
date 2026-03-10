@@ -1,17 +1,9 @@
-function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object') {
-    return null
-  }
-  return value as Record<string, unknown>
-}
-
-function toStringOrEmpty(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-function toCursor(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
-}
+import type { SimplifiedSchemaProperty } from '@/shared/types/schema'
+import {
+  toCursor,
+  toRecordOrNull as toRecord,
+  toStringOrEmpty,
+} from '@/shared/utils/type-guards'
 
 export function extractPlainText(richText: unknown): string {
   if (!Array.isArray(richText)) {
@@ -315,7 +307,7 @@ export function formatPage(page: Record<string, unknown>): {
   }
 }
 
-export type SimplifiedSchemaProperty = { type: string } & Record<string, unknown>
+export type { SimplifiedSchemaProperty }
 
 export function simplifyDatabaseProperties(
   properties: Record<string, unknown>,

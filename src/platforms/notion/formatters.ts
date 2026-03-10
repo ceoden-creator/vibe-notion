@@ -1,3 +1,6 @@
+import type { SimplifiedSchemaProperty } from '@/shared/types/schema'
+import { toOptionalString, toRecord, toStringArray, toStringValue } from '@/shared/utils/type-guards'
+
 export type MentionRef = { id: string; type: 'page'; title?: string } | { id: string; type: 'user'; name?: string }
 
 export type PropertyValue =
@@ -251,7 +254,7 @@ export function formatBlockRecord(record: Record<string, unknown>): {
   }
 }
 
-export type SimplifiedSchemaProperty = { type: string } & Record<string, unknown>
+export type { SimplifiedSchemaProperty }
 
 export function simplifyCollectionSchema(
   schema: Record<string, Record<string, unknown>>,
@@ -677,14 +680,6 @@ function getRecordValue(record: Record<string, unknown> | undefined): Record<str
   return outer
 }
 
-function toRecord(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return undefined
-  }
-
-  return value as Record<string, unknown>
-}
-
 function toRecordMap(value: unknown): Record<string, Record<string, unknown>> {
   const source = toRecord(value)
   if (!source) {
@@ -701,22 +696,6 @@ function toRecordMap(value: unknown): Record<string, Record<string, unknown>> {
   }
 
   return map
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  return value.filter((entry): entry is string => typeof entry === 'string')
-}
-
-function toStringValue(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-function toOptionalString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined
 }
 
 function extractRawSchema(recordMap: Record<string, unknown> | undefined): Record<string, Record<string, unknown>> {
