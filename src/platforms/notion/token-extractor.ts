@@ -317,7 +317,9 @@ export class TokenExtractor {
     } finally {
       try {
         rmSync(tempDbPath, { force: true })
-      } catch {}
+      } catch {
+        // Best-effort cleanup — temp file may already be removed
+      }
     }
   }
 
@@ -339,7 +341,9 @@ export class TokenExtractor {
           if (Array.isArray(parsed) && parsed.every((item) => typeof item === 'string')) {
             return parsed
           }
-        } catch {}
+        } catch {
+          // Substring also not valid JSON — fall through to return []
+        }
       }
     }
 
