@@ -13,7 +13,6 @@ import {
   type BatchCommandOptions as SharedBatchCommandOptions,
   type BatchDeps as SharedBatchDeps,
   executeBatch as executeSharedBatch,
-  toErrorMessage,
 } from '@/shared/batch/execute'
 import { handleNotionError } from '@/shared/utils/error-handler'
 
