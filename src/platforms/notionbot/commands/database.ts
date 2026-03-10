@@ -138,8 +138,9 @@ export async function handleDatabaseCreate(
   const hasTitleProperty = Object.values(parsed).some((v: any) => v && typeof v === 'object' && 'title' in v)
   const properties = hasTitleProperty ? parsed : { Name: { title: {} }, ...parsed }
 
-  // Use client.request() directly because the SDK (v5+) strips `properties`
-  // from the body params of databases.create, causing the API to reject the request.
+  // Bypass SDK — databases.create in @notionhq/client v5+ strips `properties`
+  // from body params, causing Notion API to reject the request.
+  // See: https://github.com/makenotion/notion-sdk-js/issues/618
   const result = await client.request({
     path: 'databases',
     method: 'post',
@@ -166,7 +167,7 @@ export async function handleDatabaseUpdate(
     body.properties = JSON.parse(args.properties)
   }
 
-  // Use client.request() directly — same SDK workaround as handleDatabaseCreate
+  // Bypass SDK — same issue as handleDatabaseCreate (properties stripped from body)
   const result = await client.request({
     path: `databases/${databaseId}`,
     method: 'patch',
