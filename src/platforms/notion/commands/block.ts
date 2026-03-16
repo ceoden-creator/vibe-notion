@@ -3,7 +3,12 @@ import path from 'node:path'
 import { Command } from 'commander'
 
 import { internalRequest } from '@/platforms/notion/client'
-import { formatBacklinks, formatBlockChildren, formatBlockValue } from '@/platforms/notion/formatters'
+import {
+  extractTableColumnOrder,
+  formatBacklinks,
+  formatBlockChildren,
+  formatBlockValue,
+} from '@/platforms/notion/formatters'
 import { uploadFile, uploadFileOnly } from '@/platforms/notion/upload'
 import { preprocessMarkdownImages } from '@/shared/markdown/preprocess-images'
 import { readMarkdownInput } from '@/shared/markdown/read-input'
@@ -220,7 +225,15 @@ async function childrenAction(rawBlockId: string, options: ChildListOptions): Pr
 
     const hasMore = response.cursor.stack.length > 0
     const nextCursor = hasMore ? JSON.stringify(response.cursor) : null
-    const output = formatBlockChildren(childBlocks as Array<Record<string, unknown>>, hasMore, nextCursor)
+    const parentType = parentBlock.type as string | undefined
+    const columnOrder =
+      parentType === 'table' ? extractTableColumnOrder(parentBlock as Record<string, unknown>) : undefined
+    const output = formatBlockChildren(
+      childBlocks as Array<Record<string, unknown>>,
+      hasMore,
+      nextCursor,
+      columnOrder,
+    )
 
     console.log(formatOutput(output, options.pretty))
   } catch (error) {

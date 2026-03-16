@@ -9,6 +9,8 @@ import {
   extractBlockText,
   extractCollectionName,
   extractNotionTitle,
+  extractTableColumnOrder,
+  extractTableRowCells,
   formatBacklinks,
   formatBlockChildren,
   formatBlockRecord,
@@ -82,6 +84,95 @@ describe('extractBlockText', () => {
 
     // Then
     expect(result).toBe('Test block')
+  })
+
+  test('extracts cell values from table_row block', () => {
+    // Given
+    const block = {
+      type: 'table_row',
+      properties: { col1: [['Mon']], col2: [['Tue']], col3: [['Wed']] },
+    }
+
+    // When
+    const result = extractBlockText(block)
+
+    // Then
+    expect(result).toBe('Mon | Tue | Wed')
+  })
+
+  test('returns empty string for table_row without properties', () => {
+    // Given
+    const block = { type: 'table_row' }
+
+    // When
+    const result = extractBlockText(block)
+
+    // Then
+    expect(result).toBe('')
+  })
+})
+
+describe('extractTableColumnOrder', () => {
+  test('extracts column order from table block format', () => {
+    // Given
+    const block = {
+      type: 'table',
+      format: { table_block_column_order: ['col-a', 'col-b', 'col-c'] },
+    }
+
+    // When
+    const result = extractTableColumnOrder(block)
+
+    // Then
+    expect(result).toEqual(['col-a', 'col-b', 'col-c'])
+  })
+
+  test('returns empty array when format is missing', () => {
+    // Given
+    const block = { type: 'table' }
+
+    // When
+    const result = extractTableColumnOrder(block)
+
+    // Then
+    expect(result).toEqual([])
+  })
+})
+
+describe('extractTableRowCells', () => {
+  test('extracts cells in column order', () => {
+    // Given
+    const block = {
+      properties: { 'col-a': [['Mon']], 'col-b': [['Tue']], 'col-c': [['Wed']] },
+    }
+
+    // When
+    const result = extractTableRowCells(block, ['col-a', 'col-b', 'col-c'])
+
+    // Then
+    expect(result).toEqual(['Mon', 'Tue', 'Wed'])
+  })
+
+  test('returns empty strings for missing columns', () => {
+    // Given
+    const block = { properties: { 'col-a': [['Mon']] } }
+
+    // When
+    const result = extractTableRowCells(block, ['col-a', 'col-b'])
+
+    // Then
+    expect(result).toEqual(['Mon', ''])
+  })
+
+  test('returns empty strings when properties are missing', () => {
+    // Given
+    const block = {}
+
+    // When
+    const result = extractTableRowCells(block, ['col-a', 'col-b'])
+
+    // Then
+    expect(result).toEqual(['', ''])
   })
 })
 
@@ -168,6 +259,41 @@ describe('formatBlockValue', () => {
       view_ids: ['view-3'],
     })
   })
+
+  test('includes table_column_order for table blocks', () => {
+    // Given
+    const block = {
+      id: 'table-1',
+      type: 'table',
+      content: ['row-1', 'row-2'],
+      parent_id: 'page-1',
+      format: { table_block_column_order: ['col-a', 'col-b'] },
+    }
+
+    // When
+    const result = formatBlockValue(block)
+
+    // Then
+    expect(result.table_column_order).toEqual(['col-a', 'col-b'])
+    expect(result.type).toBe('table')
+  })
+
+  test('includes cells for table_row blocks', () => {
+    // Given
+    const block = {
+      id: 'row-1',
+      type: 'table_row',
+      properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] },
+      parent_id: 'table-1',
+    }
+
+    // When
+    const result = formatBlockValue(block)
+
+    // Then
+    expect(result.text).toBe('Mon | Tue')
+    expect(result.cells).toEqual(['Mon', 'Tue'])
+  })
 })
 
 describe('formatBlockChildren', () => {
@@ -211,6 +337,37 @@ describe('formatBlockChildren', () => {
       has_more: false,
       next_cursor: null,
     })
+  })
+
+  test('includes ordered cells for table_row blocks when columnOrder provided', () => {
+    // Given
+    const blocks = [
+      { id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } },
+      { id: 'row-2', type: 'table_row', properties: { 'col-a': [['1']], 'col-b': [['2']] } },
+    ]
+
+    // When
+    const result = formatBlockChildren(blocks, false, null, ['col-a', 'col-b'])
+
+    // Then
+    expect(result.results).toEqual([
+      { id: 'row-1', type: 'table_row', text: 'Mon | Tue', cells: ['Mon', 'Tue'] },
+      { id: 'row-2', type: 'table_row', text: '1 | 2', cells: ['1', '2'] },
+    ])
+  })
+
+  test('omits cells when no columnOrder provided', () => {
+    // Given
+    const blocks = [
+      { id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } },
+    ]
+
+    // When
+    const result = formatBlockChildren(blocks, false, null)
+
+    // Then
+    expect(result.results[0].cells).toBeUndefined()
+    expect(result.results[0].text).toBe('Mon | Tue')
   })
 })
 
@@ -358,6 +515,57 @@ describe('formatPageGet', () => {
       title: '',
       blocks: [{ id: 'block-1', type: 'text', text: 'Present' }],
     })
+  })
+
+  test('renders table blocks with ordered cell data', () => {
+    // Given
+    const blocks: Record<string, Record<string, unknown>> = {
+      'page-1': {
+        value: { id: 'page-1', type: 'page', content: ['table-1'] },
+        role: 'editor',
+      },
+      'table-1': {
+        value: {
+          id: 'table-1',
+          type: 'table',
+          content: ['row-1', 'row-2'],
+          format: { table_block_column_order: ['col-a', 'col-b', 'col-c'] },
+        },
+        role: 'editor',
+      },
+      'row-1': {
+        value: {
+          id: 'row-1',
+          type: 'table_row',
+          properties: { 'col-a': [['']], 'col-b': [['Mon']], 'col-c': [['Tue']] },
+        },
+        role: 'editor',
+      },
+      'row-2': {
+        value: {
+          id: 'row-2',
+          type: 'table_row',
+          properties: { 'col-a': [['1st']], 'col-b': [['a']], 'col-c': [['b']] },
+        },
+        role: 'editor',
+      },
+    }
+
+    // When
+    const result = formatPageGet(blocks, 'page-1')
+
+    // Then
+    expect(result.blocks).toEqual([
+      {
+        id: 'table-1',
+        type: 'table',
+        text: '',
+        children: [
+          { id: 'row-1', type: 'table_row', text: ' | Mon | Tue', cells: ['', 'Mon', 'Tue'] },
+          { id: 'row-2', type: 'table_row', text: '1st | a | b', cells: ['1st', 'a', 'b'] },
+        ],
+      },
+    ])
   })
 
   test('includes database row properties when page belongs to a collection', () => {

@@ -32,6 +32,7 @@ export type SimplifiedBlock = {
   type: string
   text: string
   checked?: boolean
+  cells?: string[]
   children?: SimplifiedBlock[]
 }
 
@@ -44,7 +45,37 @@ export function extractNotionTitle(block: Record<string, unknown>): string {
 }
 
 export function extractBlockText(block: Record<string, unknown>): string {
+  const type = toStringValue(block.type)
+  if (type === 'table_row') {
+    return extractTableRowText(block)
+  }
   return extractNotionTitle(block)
+}
+
+function extractTableRowText(block: Record<string, unknown>): string {
+  const properties = toRecord(block.properties)
+  if (!properties) return ''
+  return Object.values(properties)
+    .map((value) => extractPropertyText(value))
+    .filter(Boolean)
+    .join(' | ')
+}
+
+export function extractTableColumnOrder(block: Record<string, unknown>): string[] {
+  const format = toRecord(block.format)
+  if (!format) return []
+  const columnOrder = format.table_block_column_order
+  if (!Array.isArray(columnOrder)) return []
+  return columnOrder.filter((id): id is string => typeof id === 'string')
+}
+
+export function extractTableRowCells(
+  block: Record<string, unknown>,
+  columnOrder: string[],
+): string[] {
+  const properties = toRecord(block.properties)
+  if (!properties) return columnOrder.map(() => '')
+  return columnOrder.map((colId) => extractPropertyText(properties[colId]))
 }
 
 export function formatBlockValue(block: Record<string, unknown>): {
@@ -52,10 +83,12 @@ export function formatBlockValue(block: Record<string, unknown>): {
   type: string
   text: string
   checked?: boolean
+  cells?: string[]
   content: string[] | undefined
   parent_id: string | undefined
   collection_id?: string
   view_ids?: string[]
+  table_column_order?: string[]
 } {
   const content = toStringArray(block.content)
   const type = toStringValue(block.type)
@@ -63,15 +96,21 @@ export function formatBlockValue(block: Record<string, unknown>): {
   const viewIds = isCollection ? toStringArray(block.view_ids) : []
   const collectionId = isCollection ? toOptionalString(block.collection_id) : undefined
 
+  const columnOrder = type === 'table' ? extractTableColumnOrder(block) : []
+  const cells =
+    type === 'table_row' ? extractTableRowCells(block, Object.keys(toRecord(block.properties) ?? {})) : undefined
+
   return {
     id: toStringValue(block.id),
     type,
     text: extractBlockText(block),
     ...(type === 'to_do' ? { checked: extractChecked(block) } : {}),
+    ...(cells && cells.some(Boolean) ? { cells } : {}),
     content: content.length > 0 ? content : undefined,
     parent_id: toOptionalString(block.parent_id),
     ...(collectionId ? { collection_id: collectionId } : {}),
     ...(viewIds.length > 0 ? { view_ids: viewIds } : {}),
+    ...(columnOrder.length > 0 ? { table_column_order: columnOrder } : {}),
   }
 }
 
@@ -79,19 +118,23 @@ export function formatBlockChildren(
   blocks: Array<Record<string, unknown>>,
   hasMore: boolean,
   nextCursor: string | null,
+  columnOrder?: string[],
 ): {
-  results: Array<{ id: string; type: string; text: string; checked?: boolean }>
+  results: Array<{ id: string; type: string; text: string; checked?: boolean; cells?: string[] }>
   has_more: boolean
   next_cursor: string | null
 } {
   return {
     results: blocks.map((block) => {
       const type = toStringValue(block.type)
+      const cells =
+        type === 'table_row' && columnOrder ? extractTableRowCells(block, columnOrder) : undefined
       return {
         id: toStringValue(block.id),
         type,
-        text: extractBlockText(block),
+        text: cells ? cells.join(' | ') : extractBlockText(block),
         ...(type === 'to_do' ? { checked: extractChecked(block) } : {}),
+        ...(cells ? { cells } : {}),
       }
     }),
     has_more: hasMore,
@@ -660,10 +703,38 @@ function buildPageChildren(blocks: Record<string, Record<string, unknown>>, chil
 
     const nestedIds = toStringArray(child.content)
     if (nestedIds.length > 0) {
-      node.children = buildPageChildren(blocks, nestedIds)
+      if (type === 'table') {
+        const columnOrder = extractTableColumnOrder(child)
+        node.children = buildTableRowChildren(blocks, nestedIds, columnOrder)
+      } else {
+        node.children = buildPageChildren(blocks, nestedIds)
+      }
     }
 
     children.push(node)
+  }
+
+  return children
+}
+
+function buildTableRowChildren(
+  blocks: Record<string, Record<string, unknown>>,
+  childIds: string[],
+  columnOrder: string[],
+): SimplifiedBlock[] {
+  const children: SimplifiedBlock[] = []
+
+  for (const childId of childIds) {
+    const child = getRecordValue(blocks[childId])
+    if (!child) continue
+
+    const cells = extractTableRowCells(child, columnOrder)
+    children.push({
+      id: toStringValue(child.id),
+      type: 'table_row',
+      text: cells.join(' | '),
+      cells,
+    })
   }
 
   return children
