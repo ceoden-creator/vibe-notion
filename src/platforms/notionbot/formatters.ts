@@ -273,6 +273,10 @@ export function extractBlockContent(block: Record<string, unknown>): string {
     case 'embed':
     case 'link_preview':
       return toStringOrEmpty(typeData.url)
+    case 'table_row': {
+      const cells = Array.isArray(typeData.cells) ? typeData.cells : []
+      return cells.map((cell: unknown) => extractPlainText(cell)).join(' | ')
+    }
     case 'table_of_contents':
     case 'divider':
     case 'breadcrumb':
@@ -280,7 +284,6 @@ export function extractBlockContent(block: Record<string, unknown>): string {
     case 'column':
     case 'synced_block':
     case 'table':
-    case 'table_row':
       return ''
     default:
       return ''
@@ -447,14 +450,33 @@ export function formatBlock(block: Record<string, unknown>): {
   id: string
   type: string
   content: string
+  cells?: string[]
   has_children: boolean
 } {
-  return {
+  const blockType = toStringOrEmpty(block.type)
+  const result: {
+    id: string
+    type: string
+    content: string
+    cells?: string[]
+    has_children: boolean
+  } = {
     id: toStringOrEmpty(block.id),
-    type: toStringOrEmpty(block.type),
+    type: blockType,
     content: extractBlockContent(block),
     has_children: block.has_children === true,
   }
+
+  if (blockType === 'table_row') {
+    const typeData = toRecord(block[blockType]) ?? {}
+    const rawCells = Array.isArray(typeData.cells) ? typeData.cells : []
+    const cells = rawCells.map((cell: unknown) => extractPlainText(cell))
+    if (cells.length > 0) {
+      result.cells = cells
+    }
+  }
+
+  return result
 }
 
 export function formatBlockChildrenResponse(response: Record<string, unknown>): {

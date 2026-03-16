@@ -529,6 +529,40 @@ describe('extractBlockContent', () => {
     // Then
     expect(result).toBe('')
   })
+
+  test('extracts table_row cell contents', () => {
+    // Given
+    const block = {
+      type: 'table_row',
+      table_row: {
+        cells: [
+          [{ plain_text: 'Mon' }],
+          [{ plain_text: 'Tue' }],
+          [{ plain_text: 'Wed' }],
+        ],
+      },
+    }
+
+    // When
+    const result = extractBlockContent(block)
+
+    // Then
+    expect(result).toBe('Mon | Tue | Wed')
+  })
+
+  test('returns empty string for table_row with empty cells', () => {
+    // Given
+    const block = {
+      type: 'table_row',
+      table_row: { cells: [] },
+    }
+
+    // When
+    const result = extractBlockContent(block)
+
+    // Then
+    expect(result).toBe('')
+  })
 })
 
 describe('formatPage', () => {
@@ -761,6 +795,34 @@ describe('formatBlock', () => {
       type: 'heading_1',
       content: 'Top Heading',
       has_children: true,
+    })
+  })
+
+  test('formats table_row block with cells', () => {
+    // Given
+    const block = {
+      id: 'row-1',
+      type: 'table_row',
+      has_children: false,
+      table_row: {
+        cells: [
+          [{ plain_text: 'Mon' }],
+          [{ plain_text: 'Tue' }],
+          [{ plain_text: 'Wed' }],
+        ],
+      },
+    }
+
+    // When
+    const result = formatBlock(block)
+
+    // Then
+    expect(result).toEqual({
+      id: 'row-1',
+      type: 'table_row',
+      content: 'Mon | Tue | Wed',
+      cells: ['Mon', 'Tue', 'Wed'],
+      has_children: false,
     })
   })
 })
