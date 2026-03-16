@@ -446,6 +446,16 @@ vibe-notion auth extract --debug
 
 This shows the Notion directory path and extraction steps to help diagnose the issue.
 
+### Database locked during extraction
+
+If `auth extract` fails with:
+
+```json
+{"error":"No token_v2 found. Make sure Notion desktop app is installed and logged in."}
+```
+
+And the Notion desktop app **is** installed and logged in, the cookie database may be locked by the running Notion app. Tell the user to quit the Notion desktop app completely, then retry the command. Once credentials are extracted, the user can reopen Notion.
+
 ### `vibe-notion: command not found`
 
 The `vibe-notion` package is not installed. Run it directly using a package runner. Ask the user which one to use:
