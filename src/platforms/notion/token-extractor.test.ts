@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite'
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, spyOn, test } from 'bun:test'
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'node:crypto'
+import * as fs from 'node:fs'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -606,6 +607,31 @@ describe('getErrors', () => {
     const errors = extractor.getErrors()
     expect(errors.length).toBeGreaterThan(0)
     expect(errors[0]).toContain('readTokenFromDb')
+  })
+
+  test('extract throws descriptive error when cookie file is locked (EBUSY)', async () => {
+    // given — Cookies file exists but is locked by the running Notion app
+    const notionDir = mkdtempSync(join(tmpdir(), 'notion-ebusy-'))
+    tempDirs.push(notionDir)
+
+    const cookieDir = join(notionDir, 'Partitions', 'notion', 'Network')
+    mkdirSync(cookieDir, { recursive: true })
+    const cookiePath = join(cookieDir, 'Cookies')
+    writeFileSync(cookiePath, 'placeholder')
+
+    const copyFileSyncSpy = spyOn(fs, 'copyFileSync').mockImplementation(() => {
+      const err = new Error('resource busy or locked') as NodeJS.ErrnoException
+      err.code = 'EBUSY'
+      throw err
+    })
+
+    // when — then
+    try {
+      const extractor = new TokenExtractor('darwin', notionDir)
+      await expect(extractor.extract()).rejects.toThrow('Quit the Notion app completely and try again')
+    } finally {
+      copyFileSyncSpy.mockRestore()
+    }
   })
 
   test('returns a copy that cannot mutate internal state', () => {

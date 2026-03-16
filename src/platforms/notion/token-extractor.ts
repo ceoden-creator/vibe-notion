@@ -279,6 +279,12 @@ export class TokenExtractor {
     try {
       copyFileSync(dbPath, tempDbPath)
     } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EBUSY') {
+        throw new Error(
+          'Failed to read Notion cookies. The Notion app is currently running and locking the cookie database. ' +
+            'Quit the Notion app completely and try again.',
+        )
+      }
       this.extractionErrors.push(`readTokenFromDb: failed to copy cookie DB ${dbPath}: ${(error as Error).message}`)
       return null
     }
