@@ -12,6 +12,7 @@ import {
   databaseCommand,
   pageCommand,
   searchCommand,
+  tableCommand,
   userCommand,
   workspaceCommand,
 } from './commands/index'
@@ -39,6 +40,7 @@ program.addCommand(commentCommand)
 program.addCommand(databaseCommand)
 program.addCommand(pageCommand)
 program.addCommand(searchCommand)
+program.addCommand(tableCommand)
 program.addCommand(userCommand)
 program.addCommand(workspaceCommand)
 
