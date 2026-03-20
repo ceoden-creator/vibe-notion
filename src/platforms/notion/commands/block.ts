@@ -386,6 +386,19 @@ export async function handleBlockUpdate(
   await resolveAndSetActiveUserId(tokenV2, args.workspaceId)
   const spaceId = await resolveSpaceId(tokenV2, blockId)
 
+  // Merge properties with existing block to prevent silent data loss.
+  // Without this, sending {properties: {checked: [["Yes"]]}} would wipe out
+  // the title and any other existing properties on the block.
+  if (content.properties) {
+    const existingResponse = (await internalRequest(tokenV2, 'syncRecordValues', {
+      requests: [{ pointer: { table: 'block', id: blockId }, version: -1 }],
+    })) as SyncRecordValuesResponse
+    const existingBlock = assertBlock(getBlockById(existingResponse.recordMap.block, blockId), blockId)
+    if (existingBlock.properties) {
+      content.properties = { ...existingBlock.properties, ...(content.properties as Record<string, unknown>) }
+    }
+  }
+
   const payload: SaveTransactionsRequest = {
     requestId: generateId(),
     transactions: [

@@ -1634,6 +1634,229 @@ describe('blockCommand', () => {
       expect(syncCall).toBeDefined()
     })
 
+    test('merges properties with existing block to prevent data loss', async () => {
+      // Given
+      let syncCallCount = 0
+      const mockInternalRequest = mock((_token: string, endpoint: string) => {
+        if (endpoint === 'syncRecordValues') {
+          syncCallCount++
+          return Promise.resolve({
+            recordMap: {
+              block: {
+                'todo-block': {
+                  value: {
+                    id: 'todo-block',
+                    type: 'to_do',
+                    version: 1,
+                    parent_id: 'parent-1',
+                    space_id: 'space-1',
+                    alive: true,
+                    properties: {
+                      title: [['Buy groceries']],
+                      checked: [['No']],
+                    },
+                  },
+                  role: 'editor',
+                },
+              },
+            },
+          })
+        }
+        return Promise.resolve({})
+      })
+      const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token', space_id: 'space-123' }))
+      const mockResolveSpaceId = mock(() => Promise.resolve('space-123'))
+      const mockGenerateId = mock(() => 'mock-uuid')
+
+      mock.module('../client', () => ({
+        internalRequest: mockInternalRequest,
+      }))
+
+      mock.module('./helpers', () => ({
+        getCredentialsOrExit: mockGetCredentials,
+        generateId: mockGenerateId,
+        resolveSpaceId: mockResolveSpaceId,
+        resolveCollectionViewId: mock(() => Promise.resolve('view-123')),
+        resolveAndSetActiveUserId: mock(() => Promise.resolve()),
+        resolveBacklinkUsers: mock(async () => ({})),
+        resolveDefaultTeamId: mock(async () => undefined),
+      }))
+
+      const { blockCommand } = await import('./block')
+      const output: string[] = []
+      const originalLog = console.log
+      console.log = (msg: string) => output.push(msg)
+
+      try {
+        // When: send only checked, without title
+        await blockCommand.parseAsync(
+          [
+            'update',
+            'todo-block',
+            '--workspace-id',
+            'space-123',
+            '--content',
+            JSON.stringify({ properties: { checked: [['Yes']] } }),
+          ],
+          { from: 'user' },
+        )
+      } catch {
+        // Expected to exit
+      }
+
+      console.log = originalLog
+
+      // Then: saveTransactions should include merged properties (title preserved)
+      const saveCall = mockInternalRequest.mock.calls.find((call) => (call as any[])[1] === 'saveTransactions') as
+        | [unknown, unknown, { transactions: Array<{ operations: any[] }> }]
+        | undefined
+      expect(saveCall).toBeDefined()
+      const operation = saveCall?.[2].transactions[0]?.operations[0]
+      expect(operation?.args.properties).toEqual({
+        title: [['Buy groceries']],
+        checked: [['Yes']],
+      })
+    })
+
+    test('skips property merge when content has no properties', async () => {
+      // Given
+      let syncCallCount = 0
+      const mockInternalRequest = mock((_token: string, endpoint: string) => {
+        if (endpoint === 'syncRecordValues') {
+          syncCallCount++
+          return Promise.resolve({
+            recordMap: {
+              block: {
+                'block-123': {
+                  value: {
+                    id: 'block-123',
+                    type: 'text',
+                    version: 2,
+                  },
+                  role: 'editor',
+                },
+              },
+            },
+          })
+        }
+        return Promise.resolve({})
+      })
+      const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token', space_id: 'space-123' }))
+      const mockResolveSpaceId = mock(() => Promise.resolve('space-123'))
+      const mockGenerateId = mock(() => 'mock-uuid')
+
+      mock.module('../client', () => ({
+        internalRequest: mockInternalRequest,
+      }))
+
+      mock.module('./helpers', () => ({
+        getCredentialsOrExit: mockGetCredentials,
+        generateId: mockGenerateId,
+        resolveSpaceId: mockResolveSpaceId,
+        resolveCollectionViewId: mock(() => Promise.resolve('view-123')),
+        resolveAndSetActiveUserId: mock(() => Promise.resolve()),
+        resolveBacklinkUsers: mock(async () => ({})),
+        resolveDefaultTeamId: mock(async () => undefined),
+      }))
+
+      const { blockCommand } = await import('./block')
+      const output: string[] = []
+      const originalLog = console.log
+      console.log = (msg: string) => output.push(msg)
+
+      try {
+        // When: update without properties (e.g., changing format)
+        await blockCommand.parseAsync(
+          ['update', 'block-123', '--workspace-id', 'space-123', '--content', JSON.stringify({ format: { width: 100 } })],
+          { from: 'user' },
+        )
+      } catch {
+        // Expected to exit
+      }
+
+      console.log = originalLog
+
+      // Then: only 1 syncRecordValues call (the verification after save), no pre-fetch
+      expect(syncCallCount).toBe(1)
+    })
+
+    test('handles property merge when block has no existing properties', async () => {
+      // Given
+      const mockInternalRequest = mock((_token: string, endpoint: string) => {
+        if (endpoint === 'syncRecordValues') {
+          return Promise.resolve({
+            recordMap: {
+              block: {
+                'block-123': {
+                  value: {
+                    id: 'block-123',
+                    type: 'to_do',
+                    version: 1,
+                    parent_id: 'parent-1',
+                    space_id: 'space-1',
+                    alive: true,
+                  },
+                  role: 'editor',
+                },
+              },
+            },
+          })
+        }
+        return Promise.resolve({})
+      })
+      const mockGetCredentials = mock(() => Promise.resolve({ token_v2: 'test-token', space_id: 'space-123' }))
+      const mockResolveSpaceId = mock(() => Promise.resolve('space-123'))
+      const mockGenerateId = mock(() => 'mock-uuid')
+
+      mock.module('../client', () => ({
+        internalRequest: mockInternalRequest,
+      }))
+
+      mock.module('./helpers', () => ({
+        getCredentialsOrExit: mockGetCredentials,
+        generateId: mockGenerateId,
+        resolveSpaceId: mockResolveSpaceId,
+        resolveCollectionViewId: mock(() => Promise.resolve('view-123')),
+        resolveAndSetActiveUserId: mock(() => Promise.resolve()),
+        resolveBacklinkUsers: mock(async () => ({})),
+        resolveDefaultTeamId: mock(async () => undefined),
+      }))
+
+      const { blockCommand } = await import('./block')
+      const output: string[] = []
+      const originalLog = console.log
+      console.log = (msg: string) => output.push(msg)
+
+      try {
+        // When: block has no existing properties
+        await blockCommand.parseAsync(
+          [
+            'update',
+            'block-123',
+            '--workspace-id',
+            'space-123',
+            '--content',
+            JSON.stringify({ properties: { checked: [['Yes']] } }),
+          ],
+          { from: 'user' },
+        )
+      } catch {
+        // Expected to exit
+      }
+
+      console.log = originalLog
+
+      // Then: uses provided properties as-is (no merge needed)
+      const saveCall = mockInternalRequest.mock.calls.find((call) => (call as any[])[1] === 'saveTransactions') as
+        | [unknown, unknown, { transactions: Array<{ operations: any[] }> }]
+        | undefined
+      expect(saveCall).toBeDefined()
+      const operation = saveCall?.[2].transactions[0]?.operations[0]
+      expect(operation?.args.properties).toEqual({
+        checked: [['Yes']],
+      })
+    })
+
     test('errors on non-object content', async () => {
       // Given
       const mockInternalRequest = mock(() => Promise.resolve({}))
