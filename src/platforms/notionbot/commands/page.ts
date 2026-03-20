@@ -191,7 +191,7 @@ export async function handlePageUpdate(
       for (const block of response.results) {
         await client.blocks.delete({ block_id: block.id })
       }
-      cursor = response.has_more ? response.next_cursor ?? undefined : undefined
+      cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined
     } while (cursor)
 
     if (newBlocks.length > 0) {

@@ -3,17 +3,13 @@ import { readFileSync } from 'node:fs'
 import { Command } from 'commander'
 
 import { type NotionClient, getClientOrThrow } from '@/platforms/notionbot/client'
+import { type BatchCommandOptions, type BatchDeps, executeBatch as executeSharedBatch } from '@/shared/batch/execute'
 import {
   type ActionRegistry,
   type NotionBotHandler,
   normalizeOperationArgs,
   validateOperations,
 } from '@/shared/batch/types'
-import {
-  type BatchCommandOptions,
-  type BatchDeps,
-  executeBatch as executeSharedBatch,
-} from '@/shared/batch/execute'
 import { handleError } from '@/shared/utils/error-handler'
 
 import { handleBlockAppend, handleBlockDelete, handleBlockUpdate, handleBlockUpload } from './block'

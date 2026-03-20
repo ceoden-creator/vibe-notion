@@ -3,17 +3,17 @@ import { readFileSync } from 'node:fs'
 import { Command } from 'commander'
 
 import {
+  type BatchCommandOptions as SharedBatchCommandOptions,
+  type BatchDeps as SharedBatchDeps,
+  executeBatch as executeSharedBatch,
+} from '@/shared/batch/execute'
+import {
   type ActionRegistry,
   type BatchOperation,
   type NotionHandler,
   normalizeOperationArgs,
   validateOperations,
 } from '@/shared/batch/types'
-import {
-  type BatchCommandOptions as SharedBatchCommandOptions,
-  type BatchDeps as SharedBatchDeps,
-  executeBatch as executeSharedBatch,
-} from '@/shared/batch/execute'
 import { handleNotionError } from '@/shared/utils/error-handler'
 
 import { handleBlockAppend, handleBlockDelete, handleBlockMove, handleBlockUpdate, handleBlockUpload } from './block'

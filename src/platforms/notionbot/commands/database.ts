@@ -1,5 +1,5 @@
-import { Command } from 'commander'
 import type { SearchParameters } from '@notionhq/client/build/src/api-endpoints'
+import { Command } from 'commander'
 
 import { getClient, type NotionClient } from '@/platforms/notionbot/client'
 import { formatDatabase, formatDatabaseListResults, formatDatabaseQueryResults } from '@/platforms/notionbot/formatters'
@@ -136,7 +136,9 @@ export async function handleDatabaseCreate(
 ): Promise<unknown> {
   const parentId = formatNotionId(args.parent)
   const parsed = args.properties ? JSON.parse(args.properties) : {}
-  const hasTitleProperty = Object.values(parsed).some((v: unknown) => v !== null && typeof v === 'object' && 'title' in v)
+  const hasTitleProperty = Object.values(parsed).some(
+    (v: unknown) => v !== null && typeof v === 'object' && 'title' in v,
+  )
   const properties = hasTitleProperty ? parsed : { Name: { title: {} }, ...parsed }
 
   // Bypass SDK — databases.create in @notionhq/client v5+ strips `properties`

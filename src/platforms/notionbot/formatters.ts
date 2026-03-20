@@ -1,9 +1,5 @@
 import type { SimplifiedSchemaProperty } from '@/shared/types/schema'
-import {
-  toCursor,
-  toRecordOrNull as toRecord,
-  toStringOrEmpty,
-} from '@/shared/utils/type-guards'
+import { toCursor, toRecordOrNull as toRecord, toStringOrEmpty } from '@/shared/utils/type-guards'
 
 export function extractPlainText(richText: unknown): string {
   if (!Array.isArray(richText)) {

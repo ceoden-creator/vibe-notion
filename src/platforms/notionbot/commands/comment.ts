@@ -1,5 +1,5 @@
-import { Command } from 'commander'
 import type { CreateCommentParameters } from '@notionhq/client/build/src/api-endpoints'
+import { Command } from 'commander'
 
 import { getClient } from '@/platforms/notionbot/client'
 import { formatComment, formatCommentListResponse } from '@/platforms/notionbot/formatters'

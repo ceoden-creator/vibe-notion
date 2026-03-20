@@ -337,7 +337,11 @@ function serializeSelectProperty(value: unknown): unknown {
   return [[value as string]]
 }
 
-function serializeMultiSelectProperty(value: unknown, propId: string, registerOption: (propId: string, value: string) => void): unknown {
+function serializeMultiSelectProperty(
+  value: unknown,
+  propId: string,
+  registerOption: (propId: string, value: string) => void,
+): unknown {
   const values = value as string[]
   const segments: string[] = []
   for (let i = 0; i < values.length; i++) {
@@ -1474,7 +1478,10 @@ export async function handleDatabaseAddRow(
   const properties: Record<string, unknown> = { title: [[args.title]] }
 
   if (args.properties) {
-    Object.assign(properties, buildSerializedInputProperties(args.properties, schema, nameToId, registerSchemaOptionValue))
+    Object.assign(
+      properties,
+      buildSerializedInputProperties(args.properties, schema, nameToId, registerSchemaOptionValue),
+    )
   }
 
   const viewId = await resolveCollectionViewId(tokenV2, collectionId)
@@ -1566,10 +1573,7 @@ export async function handleDatabaseUpdateRow(
   const schemaOps = buildSchemaOptionUpdates(optionValuesToRegister, schema, collectionId, spaceId)
   const propertySetOperations = buildRowPropertySetOperations(rowId, spaceId, serializedProps)
 
-  const operations = [
-    ...schemaOps,
-    ...propertySetOperations,
-  ]
+  const operations = [...schemaOps, ...propertySetOperations]
 
   await internalRequest(tokenV2, 'saveTransactions', {
     requestId: generateId(),

@@ -68,10 +68,7 @@ export function extractTableColumnOrder(block: Record<string, unknown>): string[
   return columnOrder.filter((id): id is string => typeof id === 'string')
 }
 
-export function extractTableRowCells(
-  block: Record<string, unknown>,
-  columnOrder: string[],
-): string[] {
+export function extractTableRowCells(block: Record<string, unknown>, columnOrder: string[]): string[] {
   const properties = toRecord(block.properties)
   if (!properties) return columnOrder.map(() => '')
   return columnOrder.map((colId) => extractPropertyText(properties[colId]))
@@ -101,9 +98,9 @@ export function formatBlockValue(
   const columnOrder = type === 'table' ? extractTableColumnOrder(block) : []
   const rowColumnOrder =
     type === 'table_row'
-      ? (tableColumnOrder && tableColumnOrder.length > 0
-          ? tableColumnOrder
-          : Object.keys(toRecord(block.properties) ?? {}))
+      ? tableColumnOrder && tableColumnOrder.length > 0
+        ? tableColumnOrder
+        : Object.keys(toRecord(block.properties) ?? {})
       : undefined
   const cells = rowColumnOrder ? extractTableRowCells(block, rowColumnOrder) : undefined
 

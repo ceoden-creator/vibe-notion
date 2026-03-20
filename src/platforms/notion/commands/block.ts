@@ -240,12 +240,7 @@ async function childrenAction(rawBlockId: string, options: ChildListOptions): Pr
     const parentType = parentBlock.type as string | undefined
     const columnOrder =
       parentType === 'table' ? extractTableColumnOrder(parentBlock as Record<string, unknown>) : undefined
-    const output = formatBlockChildren(
-      childBlocks as Array<Record<string, unknown>>,
-      hasMore,
-      nextCursor,
-      columnOrder,
-    )
+    const output = formatBlockChildren(childBlocks as Array<Record<string, unknown>>, hasMore, nextCursor, columnOrder)
 
     console.log(formatOutput(output, options.pretty))
   } catch (error) {

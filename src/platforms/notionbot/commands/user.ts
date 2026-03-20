@@ -1,5 +1,5 @@
-import { Command } from 'commander'
 import type { PartialUserObjectResponse, UserObjectResponse } from '@notionhq/client/build/src/api-endpoints'
+import { Command } from 'commander'
 
 import { getClient } from '@/platforms/notionbot/client'
 import { handleError } from '@/shared/utils/error-handler'

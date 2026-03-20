@@ -389,9 +389,7 @@ describe('formatBlockChildren', () => {
 
   test('omits cells when no columnOrder provided', () => {
     // Given
-    const blocks = [
-      { id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } },
-    ]
+    const blocks = [{ id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } }]
 
     // When
     const result = formatBlockChildren(blocks, false, null)
@@ -403,9 +401,7 @@ describe('formatBlockChildren', () => {
 
   test('falls back to extractBlockText when columnOrder is empty', () => {
     // Given
-    const blocks = [
-      { id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } },
-    ]
+    const blocks = [{ id: 'row-1', type: 'table_row', properties: { 'col-a': [['Mon']], 'col-b': [['Tue']] } }]
 
     // When
     const result = formatBlockChildren(blocks, false, null, [])

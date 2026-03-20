@@ -535,11 +535,7 @@ describe('extractBlockContent', () => {
     const block = {
       type: 'table_row',
       table_row: {
-        cells: [
-          [{ plain_text: 'Mon' }],
-          [{ plain_text: 'Tue' }],
-          [{ plain_text: 'Wed' }],
-        ],
+        cells: [[{ plain_text: 'Mon' }], [{ plain_text: 'Tue' }], [{ plain_text: 'Wed' }]],
       },
     }
 
@@ -805,11 +801,7 @@ describe('formatBlock', () => {
       type: 'table_row',
       has_children: false,
       table_row: {
-        cells: [
-          [{ plain_text: 'Mon' }],
-          [{ plain_text: 'Tue' }],
-          [{ plain_text: 'Wed' }],
-        ],
+        cells: [[{ plain_text: 'Mon' }], [{ plain_text: 'Tue' }], [{ plain_text: 'Wed' }]],
       },
     }
 
