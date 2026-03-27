@@ -86,16 +86,16 @@ export class TokenExtractor {
   }
 
   tryDecryptCookie(encrypted: Buffer): string | null {
-    const plaintext = encrypted.toString('utf8')
-    if (/^v\d+(%3A|:)/.test(plaintext)) {
-      return plaintext
-    }
-
     if (encrypted.length > 3 && encrypted.subarray(0, 3).toString() === 'v10') {
       if (this.platform === 'win32') {
         return this.decryptV10CookieWindows(encrypted)
       }
       return this.decryptV10Cookie(encrypted)
+    }
+
+    const plaintext = encrypted.toString('utf8')
+    if (/^v\d+(%3A|:)/.test(plaintext)) {
+      return plaintext
     }
 
     // Windows pre-v80: DPAPI applied directly (no version prefix)
