@@ -1,5 +1,3 @@
-import { CredentialManager } from '@/platforms/notion/credential-manager'
-import { TokenExtractor } from '@/platforms/notion/token-extractor'
 import { delay } from '@/shared/utils/delay'
 
 let activeUserId: string | undefined
@@ -52,22 +50,6 @@ async function extractResponseDetail(response: Response): Promise<string> {
   return ''
 }
 
-async function tryReExtractToken(staleToken: string): Promise<string | null> {
-  try {
-    const extractor = new TokenExtractor()
-    const extracted = await extractor.extract()
-    if (!extracted || extracted.token_v2 === staleToken) {
-      return null
-    }
-
-    const manager = new CredentialManager()
-    await manager.setCredentials(extracted)
-    return extracted.token_v2
-  } catch {
-    return null
-  }
-}
-
 const MAX_RATE_LIMIT_RETRIES = 3
 const RATE_LIMIT_BASE_DELAY_MS = 1000
 
@@ -76,10 +58,8 @@ export async function internalRequest(
   endpoint: string,
   body: Record<string, unknown> = {},
 ): Promise<unknown> {
-  let currentToken = tokenV2
-
   for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt++) {
-    const response = await doRequest(currentToken, endpoint, body)
+    const response = await doRequest(tokenV2, endpoint, body)
 
     if (response.ok) {
       return response.json()
@@ -95,20 +75,6 @@ export async function internalRequest(
           : RATE_LIMIT_BASE_DELAY_MS * 2 ** attempt
       await delay(delayMs)
       continue
-    }
-
-    // On 401, attempt token re-extraction and retry once
-    if (response.status === 401) {
-      const freshToken = await tryReExtractToken(currentToken)
-      if (freshToken) {
-        currentToken = freshToken
-        const retryResponse = await doRequest(currentToken, endpoint, body)
-        if (retryResponse.ok) {
-          return retryResponse.json()
-        }
-        const retryDetail = await extractResponseDetail(retryResponse)
-        throw new Error(buildErrorMessage(retryResponse.status, retryDetail))
-      }
     }
 
     const detail = await extractResponseDetail(response)

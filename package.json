@@ -18,6 +18,8 @@
     "access": "public"
   },
   "scripts": {
+    "notion": "bun src/platforms/notion/cli.ts",
+    "notionbot": "bun src/platforms/notionbot/cli.ts",
     "build": "tsc && tsc-alias --resolve-full-paths",
     "postbuild": "bun scripts/postbuild.ts",
     "test": "bun scripts/test.ts",
