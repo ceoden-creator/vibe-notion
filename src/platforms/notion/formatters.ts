@@ -27,6 +27,30 @@ export type BacklinkEntry = {
   title: string
 }
 
+export type PageUpdatePropertyChange = {
+  property: string
+  type: string
+  before: PropertyValue
+  after: PropertyValue
+}
+
+export type PageUpdateEdit = {
+  type: string
+  block_id: string
+  timestamp: number
+  authors: Array<{ id: string; name?: string }>
+  changed_properties?: PageUpdatePropertyChange[]
+}
+
+export type PageUpdateEntry = {
+  id: string
+  type: string
+  parent_id: string
+  start_time: number
+  end_time: number
+  edits: PageUpdateEdit[]
+}
+
 export type SimplifiedBlock = {
   id: string
   type: string
@@ -255,6 +279,137 @@ export function collectBacklinkUserIds(response: Record<string, unknown>): strin
   }
 
   return [...userIds]
+}
+
+export function formatPageUpdates(response: Record<string, unknown>, limit: number): {
+  results: PageUpdateEntry[]
+  has_more: boolean
+  next_cursor: string | null
+} {
+  const activityIds = toStringArray(response.activityIds)
+  const recordMap = toRecord(response.recordMap)
+  const activityMap = toRecordMap(recordMap?.activity)
+  const userMap = toRecordMap(recordMap?.notion_user)
+
+  const results = activityIds
+    .map((activityId) => {
+      const activity = getRecordValue(activityMap[activityId])
+      if (!activity) return undefined
+
+      return {
+        id: activityId,
+        type: toStringValue(activity.type),
+        parent_id: toStringValue(activity.parent_id),
+        start_time: toTimestamp(activity.start_time),
+        end_time: toTimestamp(activity.end_time),
+        edits: formatPageUpdateEdits(activity, userMap),
+      }
+    })
+    .filter((entry): entry is PageUpdateEntry => entry !== undefined)
+
+  const hasMore = activityIds.length === limit
+
+  return {
+    results,
+    has_more: hasMore,
+    next_cursor: hasMore && activityIds.length > 0 ? activityIds[activityIds.length - 1] : null,
+  }
+}
+
+function formatPageUpdateEdits(
+  activity: Record<string, unknown>,
+  userMap: Record<string, Record<string, unknown>>,
+): PageUpdateEdit[] {
+  const edits = Array.isArray(activity.edits) ? activity.edits : []
+  const results: PageUpdateEdit[] = []
+
+  for (const entry of edits) {
+    const edit = toRecord(entry)
+    if (!edit) continue
+
+    const changedProperties = extractChangedProperties(edit)
+    const formatted: PageUpdateEdit = {
+      type: toStringValue(edit.type),
+      block_id: toStringValue(edit.block_id),
+      timestamp: toTimestamp(edit.timestamp),
+      authors: extractActivityAuthors(edit.authors, userMap),
+      ...(changedProperties && changedProperties.length > 0 ? { changed_properties: changedProperties } : {}),
+    }
+
+    results.push(formatted)
+  }
+
+  return results
+}
+
+function extractActivityAuthors(
+  authorsValue: unknown,
+  userMap: Record<string, Record<string, unknown>>,
+): Array<{ id: string; name?: string }> {
+  if (!Array.isArray(authorsValue)) return []
+
+  return authorsValue
+    .map((entry) => {
+      const author = toRecord(entry)
+      if (!author) return undefined
+
+      const id = toStringValue(author.id)
+      if (!id) return undefined
+
+      const user = getRecordValue(userMap[id])
+      const name = toOptionalString(user?.name)
+
+      return name ? { id, name } : { id }
+    })
+    .filter((entry): entry is { id: string; name?: string } => entry !== undefined)
+}
+
+function extractChangedProperties(edit: Record<string, unknown>): PageUpdatePropertyChange[] | undefined {
+  const blockData = toRecord(edit.block_data)
+  const after = toRecord(blockData?.after)
+  const before = toRecord(blockData?.before)
+  const afterBlock = toRecord(after?.block_value)
+  const beforeBlock = toRecord(before?.block_value)
+  const blockSchema = toRecord(edit.block_schema)
+
+  if (!afterBlock || !beforeBlock || !blockSchema) {
+    return undefined
+  }
+
+  const schemaMap = buildSchemaMapFromCollection({ schema: blockSchema })
+  if (Object.keys(schemaMap).length === 0) {
+    return undefined
+  }
+
+  const beforeProps = formatRowProperties(beforeBlock, schemaMap)
+  const afterProps = formatRowProperties(afterBlock, schemaMap)
+  const propertyNames = new Set([...Object.keys(beforeProps), ...Object.keys(afterProps)])
+
+  const changes: PageUpdatePropertyChange[] = []
+  for (const propertyName of propertyNames) {
+    const beforeValue = beforeProps[propertyName]
+    const afterValue = afterProps[propertyName]
+    if (!beforeValue || !afterValue) continue
+    if (JSON.stringify(beforeValue) === JSON.stringify(afterValue)) continue
+
+    changes.push({
+      property: propertyName,
+      type: afterValue.type,
+      before: beforeValue,
+      after: afterValue,
+    })
+  }
+
+  return changes.length > 0 ? changes : undefined
+}
+
+function toTimestamp(value: unknown): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
 }
 
 function extractTitleWithMentions(block: Record<string, unknown>, userLookup: Record<string, string>): string {

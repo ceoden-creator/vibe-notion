@@ -12,6 +12,7 @@ import {
   extractNotionTitle,
   formatBacklinks,
   formatBlockRecord,
+  formatPageUpdates,
   formatPageGet,
   formatRowProperties,
 } from '@/platforms/notion/formatters'
@@ -49,6 +50,7 @@ type UpdatePageOptions = WorkspaceOptions & {
   markdown?: string
   markdownFile?: string
 }
+type PageUpdatesOptions = WorkspaceOptions & { limit?: string; startCursor?: string }
 type PropertiesOptions = WorkspaceOptions
 type ArchivePageOptions = WorkspaceOptions
 
@@ -77,6 +79,11 @@ type SyncRecordValuesResponse = {
   recordMap: {
     block: Record<string, BlockRecord>
   }
+}
+
+type PageUpdatesResponse = {
+  activityIds: string[]
+  recordMap?: Record<string, unknown>
 }
 
 type Operation = {
@@ -244,6 +251,35 @@ async function getAction(rawPageId: string, options: LoadPageChunkOptions): Prom
     } else {
       console.log(formatOutput(result, options.pretty))
     }
+  } catch (error) {
+    handleNotionError(error)
+  }
+}
+
+function parseStartCursor(rawCursor: string | undefined): string {
+  return rawCursor ? formatNotionId(rawCursor) : ''
+}
+
+async function updatesAction(rawPageId: string, options: PageUpdatesOptions): Promise<void> {
+  const pageId = formatNotionId(rawPageId)
+
+  try {
+    const limit = options.limit ? Number(options.limit) : 50
+    if (!Number.isInteger(limit) || limit <= 0) {
+      throw new Error('limit must be a positive integer')
+    }
+
+    const creds = await getCredentialsOrExit()
+    await resolveAndSetActiveUserId(creds.token_v2, options.workspaceId)
+
+    const response = (await internalRequest(creds.token_v2, 'getActivityLog', {
+      spaceId: options.workspaceId,
+      startingAfterId: parseStartCursor(options.startCursor),
+      navigableBlock: { id: pageId },
+      limit,
+    })) as PageUpdatesResponse
+
+    console.log(formatOutput(formatPageUpdates(response as unknown as Record<string, unknown>, limit), options.pretty))
   } catch (error) {
     handleNotionError(error)
   }
@@ -741,6 +777,16 @@ export const pageCommand = new Command('page')
       .option('--backlinks', 'Include backlinks (pages that link to this page)')
       .option('--pretty', 'Pretty print JSON output')
       .action(getAction),
+  )
+  .addCommand(
+    new Command('updates')
+      .description('Retrieve page updates/activity history')
+      .argument('<page_id>')
+      .requiredOption('--workspace-id <id>', 'Workspace ID (use `workspace list` to find it)')
+      .option('--limit <n>', 'Number of updates to fetch', '50')
+      .option('--start-cursor <id>', 'Pagination cursor from previous response')
+      .option('--pretty', 'Pretty print JSON output')
+      .action(updatesAction),
   )
   .addCommand(
     new Command('create')

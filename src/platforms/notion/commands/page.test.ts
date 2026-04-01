@@ -483,6 +483,208 @@ describe('PageCommand', () => {
     expect(result.backlinks).toEqual([{ id: 'ref-page', title: 'Referencing Page' }])
   })
 
+  test('page updates returns formatted activity history with pagination cursor', async () => {
+    const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string, body: any) => {
+      if (endpoint === 'getActivityLog') {
+        expect(body).toEqual({
+          spaceId: 'space-123',
+          startingAfterId: '',
+          navigableBlock: { id: 'page-1' },
+          limit: 50,
+        })
+
+        return {
+          activityIds: ['activity-1', 'activity-2'],
+          recordMap: {
+            activity: {
+              'activity-1': {
+                value: {
+                  id: 'activity-1',
+                  type: 'block-edited',
+                  parent_id: 'page-1',
+                  start_time: '100',
+                  end_time: '101',
+                  edits: [
+                    {
+                      type: 'block-changed',
+                      block_id: 'page-1',
+                      timestamp: 100,
+                      authors: [{ id: 'user-1', table: 'notion_user' }],
+                      block_schema: {
+                        title: { name: 'Name', type: 'title' },
+                        status: { name: 'Status', type: 'select' },
+                      },
+                      block_data: {
+                        before: {
+                          block_value: {
+                            properties: {
+                              title: [['Page']],
+                              status: [['Todo']],
+                            },
+                          },
+                        },
+                        after: {
+                          block_value: {
+                            properties: {
+                              title: [['Page']],
+                              status: [['Done']],
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+                role: 'reader',
+              },
+              'activity-2': {
+                value: {
+                  id: 'activity-2',
+                  type: 'comment-added',
+                  parent_id: 'page-1',
+                  start_time: '102',
+                  end_time: '102',
+                  edits: [],
+                },
+                role: 'reader',
+              },
+            },
+            notion_user: {
+              'user-1': {
+                value: {
+                  id: 'user-1',
+                  name: 'Alice',
+                },
+                role: 'reader',
+              },
+            },
+          },
+        }
+      }
+
+      return {}
+    })
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mock(async () => ({ token_v2: 'test-token' })),
+      generateId: mock(() => 'uuid-1'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-mock'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+      resolveDefaultTeamId: mock(async () => undefined),
+    }))
+
+    const { pageCommand } = await import('./page')
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      await pageCommand.parseAsync(['updates', 'page-1', '--workspace-id', 'space-123'], { from: 'user' })
+    } catch {
+      // Expected
+    }
+
+    console.log = originalLog
+
+    const result = JSON.parse(output[0])
+    expect(result.has_more).toBe(false)
+    expect(result.next_cursor).toBeNull()
+    expect(result.results).toHaveLength(2)
+    expect(result.results[0].type).toBe('block-edited')
+    expect(result.results[0].edits[0].authors).toEqual([{ id: 'user-1', name: 'Alice' }])
+    expect(result.results[0].edits[0].changed_properties).toEqual([
+      {
+        property: 'Status',
+        type: 'select',
+        before: { type: 'select', value: 'Todo' },
+        after: { type: 'select', value: 'Done' },
+      },
+    ])
+  })
+
+  test('page updates passes start cursor and returns next cursor when page is full', async () => {
+    const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string, body: any) => {
+      if (endpoint === 'getActivityLog') {
+        expect(body).toEqual({
+          spaceId: 'space-123',
+          startingAfterId: 'activity-1',
+          navigableBlock: { id: 'page-1' },
+          limit: 2,
+        })
+
+        return {
+          activityIds: ['activity-2', 'activity-3'],
+          recordMap: {
+            activity: {
+              'activity-2': {
+                value: {
+                  id: 'activity-2',
+                  type: 'block-edited',
+                  parent_id: 'page-1',
+                  start_time: '200',
+                  end_time: '200',
+                  edits: [],
+                },
+                role: 'reader',
+              },
+              'activity-3': {
+                value: {
+                  id: 'activity-3',
+                  type: 'block-edited',
+                  parent_id: 'page-1',
+                  start_time: '201',
+                  end_time: '201',
+                  edits: [],
+                },
+                role: 'reader',
+              },
+            },
+          },
+        }
+      }
+
+      return {}
+    })
+
+    mock.module('../client', () => ({
+      internalRequest: mockInternalRequest,
+    }))
+    mock.module('./helpers', () => ({
+      getCredentialsOrExit: mock(async () => ({ token_v2: 'test-token' })),
+      generateId: mock(() => 'uuid-1'),
+      resolveSpaceId: mock(async () => 'space-123'),
+      resolveCollectionViewId: mock(async () => 'view-mock'),
+      resolveAndSetActiveUserId: mock(async () => {}),
+      resolveBacklinkUsers: mock(async () => ({})),
+      resolveDefaultTeamId: mock(async () => undefined),
+    }))
+
+    const { pageCommand } = await import('./page')
+    const output: string[] = []
+    const originalLog = console.log
+    console.log = (msg: string) => output.push(msg)
+
+    try {
+      await pageCommand.parseAsync(
+        ['updates', 'page-1', '--workspace-id', 'space-123', '--limit', '2', '--start-cursor', 'activity-1'],
+        { from: 'user' },
+      )
+    } catch {
+      // Expected
+    }
+
+    console.log = originalLog
+
+    const result = JSON.parse(output[0])
+    expect(result.has_more).toBe(true)
+    expect(result.next_cursor).toBe('activity-3')
+  })
+
   test('page create creates new page with title', async () => {
     const mockInternalRequest = mock(async (_tokenV2: string, endpoint: string, body: any) => {
       if (endpoint === 'saveTransactions') {
